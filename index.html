@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>成績管理系統-支援Excel下載版</title>
+    <title>成績管理系統-加權排行精準版</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -211,7 +211,7 @@
             <div class="row">
                 <div style="flex:1;">
                     <label style="font-size:12px; color:#555;">及格分數</label>
-                    <input type="number" id="subPass" value="60">
+                    <input type="number" id="subPass" value="180">
                 </div>
                 <div style="flex:1;">
                     <label style="font-size:12px; color:#555;">加權倍數</label>
@@ -286,9 +286,8 @@
             <table id="scoreManagerTable">
                 <thead>
                     <tr>
-                        <th>座號</th><th>學號</th><th>姓名</th>
-                        <th>未加權總分</th><th>加權總分</th><th>平均分數</th>
-                        <th>總排名</th><th>進退步</th>
+                        <th>總排名</th><th>座號</th><th>學號</th><th>姓名</th>
+                        <th>未加權總分</th><th>加權總分</th><th>平均分數</th><th>進退步</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -333,7 +332,7 @@ let students = [
 
 let exams = [];     
 let tempSubjects = []; 
-let currentDisplayedList = []; // 用於暫存當前排行榜資料以利 Excel 匯出
+let currentDisplayedList = []; 
 
 window.onload = function() {
     updateStudentTable();
@@ -359,6 +358,7 @@ function addSubjectRow() {
     
     tempSubjects.push({ name, pass, weight });
     document.getElementById('subName').value = '';
+    document.getElementById('subPass').value = '180'; 
     renderTempSubjects();
 }
 
@@ -397,7 +397,7 @@ function createExam() {
 function updateExamUI() {
     const tbody = document.querySelector('#examTable tbody');
     if(exams.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="2" style="color:#aaa;">目尚無考試資料。</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2" style="color:#aaa;">目前尚無考試資料。</td></tr>`;
         return;
     }
     tbody.innerHTML = exams.map(e => `
@@ -464,7 +464,7 @@ function renderSubjectScoreInputs() {
         return `
             <div style="margin-bottom:8px; display:flex; align-items:center; gap:10px;">
                 <span style="width:120px; font-weight:bold; font-size:14px;">${sub.name}:</span>
-                <input type="number" class="quick-score-input" data-subname="${sub.name}" value="${score}" max="100" min="0" placeholder="未輸入分數">
+                <input type="number" class="quick-score-input" data-subname="${sub.name}" value="${score}" max="500" min="0" placeholder="未輸入分數">
             </div>
         `;
     }).join('');
@@ -496,7 +496,7 @@ function saveQuickScores() {
     renderSubjectScoreInputs();
 }
 
-// --- 核心演算中心 ---
+// --- 🛠️ 核心演算中心：嚴格依加權總分進行大排行與名次並列處理 🛠️ ---
 function refreshScoreBoard() {
     const examId = document.getElementById('selExam').value;
     const tbody = document.querySelector('#scoreManagerTable tbody');
@@ -512,6 +512,7 @@ function refreshScoreBoard() {
     const examIndex = exams.findIndex(e => e.id === examId);
     const prevExam = examIndex > 0 ? exams[examIndex - 1] : null;
 
+    // 計算基礎加權數據
     students.forEach(s => {
         let originalTotal = 0;
         let weightedTotal = 0;
@@ -550,8 +551,11 @@ function refreshScoreBoard() {
     let rankedGroup = students.filter(p => p._hasScore);
     let unrankedGroup = students.filter(p => !p._hasScore);
 
-    rankedGroup.sort((a,b) => b._tempWeighted - a._tempWeighted);
-    for(let i=0; i<rankedGroup.length; i++) {
+    // 🎯 核心升級：大排行榜完全依「加權總分」從高到低嚴格排序
+    rankedGroup.sort((a, b) => b._tempWeighted - a._tempWeighted);
+    
+    // 標準競賽並列排名演算 (1, 2, 2, 4...)
+    for(let i = 0; i < rankedGroup.length; i++) {
         if(i > 0 && rankedGroup[i]._tempWeighted === rankedGroup[i-1]._tempWeighted) {
             rankedGroup[i].schoolRank = rankedGroup[i-1].schoolRank;
         } else {
@@ -560,9 +564,10 @@ function refreshScoreBoard() {
     }
     unrankedGroup.forEach(s => s.schoolRank = '-');
 
+    // 各學科獨立的分開排名演算邏輯
     exam.subjects.forEach(sub => {
         let subRankList = students.filter(s => s.scores[examId] && s.scores[examId][sub.name] !== undefined);
-        subRankList.sort((a,b) => b.scores[examId][sub.name] - a.scores[examId][sub.name]);
+        subRankList.sort((a, b) => b.scores[examId][sub.name] - a.scores[examId][sub.name]);
         
         students.forEach(s => {
             if(!s._subRanks) s._subRanks = {};
@@ -576,6 +581,7 @@ function refreshScoreBoard() {
         });
     });
 
+    // 最終渲染列表：名次高的人排在最前面，未填寫分數的移至最後方面
     currentDisplayedList = [...rankedGroup, ...unrankedGroup];
 
     tbody.innerHTML = currentDisplayedList.map(s => {
@@ -589,13 +595,13 @@ function refreshScoreBoard() {
 
         return `
             <tr>
+                <td><span class="badge" style="background:#2c3e50; font-size:13px;">第 ${s.schoolRank} 名</span></td>
                 <td>${s.seat}號</td>
                 <td>${s.id}</td>
                 <td><span class="clickable-name" onclick="openStudentDetailModal('${s.id}')">${s.name}</span></td>
                 <td>${s._hasScore ? s._tempOriginal.toFixed(1) : '-'}</td>
                 <td><strong>${s._hasScore ? s._tempWeighted.toFixed(1) : '-'}</strong></td>
                 <td>${s._hasScore ? s._tempAvg.toFixed(1) : '-'}</td>
-                <td><span class="badge" style="background:#34495e;">第 ${s.schoolRank} 名</span></td>
                 <td>${progressText}</td>
             </tr>
         `;
@@ -648,7 +654,7 @@ function closeModal() {
     document.getElementById('studentDetailModal').style.display = 'none';
 }
 
-// --- ⚡ 核心功能：直接動態生成真實 Excel 檔案下載 ⚡ ---
+// --- 導出 Excel ---
 function exportToExcel() {
     const examId = document.getElementById('selExam').value;
     if(!examId || currentDisplayedList.length === 0) {
@@ -657,19 +663,16 @@ function exportToExcel() {
     
     const exam = exams.find(e => e.id === examId);
     
-    // 1. 建立 Excel 表頭：前三欄固定，後面動態插入所有科目，最後放總分與名次
-    let headers = ["座號", "學號", "姓名"];
+    let headers = ["總排名", "座號", "學號", "姓名"];
     exam.subjects.forEach(sub => {
         headers.push(`${sub.name}(得分)`, `${sub.name}(單科名次)`);
     });
-    headers.push("未加權總分", "加權總分", "平均分數", "總排名");
+    headers.push("未加權總分", "加權總分", "平均分數");
 
-    // 2. 格式化每位學生的資料行
     let excelRows = [headers];
     currentDisplayedList.forEach(s => {
-        let row = [s.seat + "號", s.id, s.name];
+        let row = [s.schoolRank, s.seat + "號", s.id, s.name];
         
-        // 抓出每一科的分數跟單科獨立名次
         const record = s.scores[examId] || {};
         exam.subjects.forEach(sub => {
             if(s._hasScore && record[sub.name] !== undefined) {
@@ -679,21 +682,18 @@ function exportToExcel() {
             }
         });
         
-        // 放上總分計算
         if(s._hasScore) {
-            row.push(s._tempOriginal.toFixed(1), s._tempWeighted.toFixed(1), s._tempAvg.toFixed(1), s.schoolRank);
+            row.push(s._tempOriginal.toFixed(1), s._tempWeighted.toFixed(1), s._tempAvg.toFixed(1));
         } else {
-            row.push("-", "-", "-", "-");
+            row.push("-", "-", "-");
         }
         excelRows.push(row);
     });
 
-    // 3. 使用 SheetJS 將陣列物件轉成試算表並自動觸發瀏覽器下載
     const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "考試排行榜看板");
 
-    // 檔名自動命名為「考試名稱_成績排行表.xlsx」
     XLSX.writeFile(workbook, `${exam.name}_成績排行表.xlsx`);
 }
 </script>
