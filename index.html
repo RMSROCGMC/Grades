@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>成績管理系統-加權排行精準版</title>
+    <title>成績管理系統-智慧創建版</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -83,6 +83,16 @@
             font-size: 15px;
         }
         
+        .grid-selects {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            background: #fdfefe;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+        }
+        
         .subject-input-flow {
             display: flex;
             flex-direction: column;
@@ -151,7 +161,6 @@
         .bg-success { background-color: var(--success); }
         .bg-danger { background-color: var(--danger); }
         
-        /* 彈窗樣式 */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 10px;
@@ -196,10 +205,42 @@
     
     <div id="examPage" class="page active">
         <h2 class="page-title">創建新考試</h2>
-        <h3>Step 1: 輸入考試基本資訊</h3>
-        <div class="form-group">
-            <label>考試名稱</label>
-            <input type="text" id="examName" placeholder="例如：1140202">
+        
+        <h3>Step 1: 選擇考試基本設定</h3>
+        <div class="grid-selects">
+            <div class="form-group">
+                <label>學年度</label>
+                <select id="examYear">
+                    <option value="114">114 學年度</option>
+                    <option value="115">115 學年度</option>
+                    <option value="116">116 學年度</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>學期</label>
+                <select id="examSemester">
+                    <option value="上學期">上學期</option>
+                    <option value="下學期">下學期</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>適用年級</label>
+                <select id="examGrade">
+                    <option value="一年級">一年級</option>
+                    <option value="二年級">二年級</option>
+                    <option value="三年級">三年級</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>考試別</label>
+                <select id="examType">
+                    <option value="第一次月考">第一次月考</option>
+                    <option value="第二次月考">第二次月考</option>
+                    <option value="期末考">期末考</option>
+                    <option value="模擬考">模擬考</option>
+                    <option value="專業檢定">專業檢定</option>
+                </select>
+            </div>
         </div>
         
         <h3>Step 2: 添加考試科目與權重</h3>
@@ -233,7 +274,7 @@
         <div class="table-responsive">
             <table id="examTable">
                 <thead>
-                    <tr><th>考試名稱</th><th>科目內容</th></tr>
+                    <tr><th>考試完整名稱</th><th>科目內容</th></tr>
                 </thead>
                 <tbody>
                     <tr><td colspan="2" style="color:#aaa;">目前尚無考試資料。</td></tr>
@@ -317,7 +358,7 @@
 </div>
 
 <script>
-// --- 預設固定的學生名冊資料 ---
+// 學生死資料
 let students = [
     { id: "410201", name: "王冠能", seat: 1, scores: {} },
     { id: "410202", name: "李育寰", seat: 2, scores: {} },
@@ -349,7 +390,7 @@ function switchPage(pageId) {
     }
 }
 
-// --- 考試設定邏輯 ---
+// 科目設定
 function addSubjectRow() {
     const name = document.getElementById('subName').value.trim();
     const pass = parseFloat(document.getElementById('subPass').value);
@@ -381,17 +422,24 @@ function deleteTempSubject(index) {
     renderTempSubjects();
 }
 
+// 🎯 核心更正：讀取下拉選單群組並智慧拼接成標準考試名稱
 function createExam() {
-    const name = document.getElementById('examName').value.trim();
-    if(!name || tempSubjects.length === 0) return alert('請輸入考試名稱並至少加入一個科目！');
+    if(tempSubjects.length === 0) return alert('請至少加入一個科目再進行創建！');
 
-    exams.push({ id: 'E' + Date.now(), name, subjects: tempSubjects });
+    const year = document.getElementById('examYear').value;
+    const semester = document.getElementById('examSemester').value;
+    const grade = document.getElementById('examGrade').value;
+    const type = document.getElementById('examType').value;
+
+    // 拼裝出完美的結構化名稱： 114學年度-上學期-一年級-第一次月考
+    const fullName = `${year}學年度-${semester}-${grade}-${type}`;
+
+    exams.push({ id: 'E' + Date.now(), name: fullName, subjects: tempSubjects });
     
     tempSubjects = [];
-    document.getElementById('examName').value = '';
     renderTempSubjects();
     updateExamUI();
-    alert('考試創建成功！');
+    alert(`考試創建成功！\n名稱：${fullName}`);
 }
 
 function updateExamUI() {
@@ -415,7 +463,7 @@ function updateStudentTable() {
     `).join('');
 }
 
-// --- 成績下拉與快速輸入區塊 ---
+// 分數操作看板
 function refreshExamSelect() {
     const selExam = document.getElementById('selExam');
     const savedValue = selExam.value;
@@ -496,7 +544,7 @@ function saveQuickScores() {
     renderSubjectScoreInputs();
 }
 
-// --- 🛠️ 核心演算中心：嚴格依加權總分進行大排行與名次並列處理 🛠️ ---
+// 排行計算演算（嚴格加權總分排序）
 function refreshScoreBoard() {
     const examId = document.getElementById('selExam').value;
     const tbody = document.querySelector('#scoreManagerTable tbody');
@@ -512,7 +560,6 @@ function refreshScoreBoard() {
     const examIndex = exams.findIndex(e => e.id === examId);
     const prevExam = examIndex > 0 ? exams[examIndex - 1] : null;
 
-    // 計算基礎加權數據
     students.forEach(s => {
         let originalTotal = 0;
         let weightedTotal = 0;
@@ -551,10 +598,8 @@ function refreshScoreBoard() {
     let rankedGroup = students.filter(p => p._hasScore);
     let unrankedGroup = students.filter(p => !p._hasScore);
 
-    // 🎯 核心升級：大排行榜完全依「加權總分」從高到低嚴格排序
     rankedGroup.sort((a, b) => b._tempWeighted - a._tempWeighted);
     
-    // 標準競賽並列排名演算 (1, 2, 2, 4...)
     for(let i = 0; i < rankedGroup.length; i++) {
         if(i > 0 && rankedGroup[i]._tempWeighted === rankedGroup[i-1]._tempWeighted) {
             rankedGroup[i].schoolRank = rankedGroup[i-1].schoolRank;
@@ -564,7 +609,6 @@ function refreshScoreBoard() {
     }
     unrankedGroup.forEach(s => s.schoolRank = '-');
 
-    // 各學科獨立的分開排名演算邏輯
     exam.subjects.forEach(sub => {
         let subRankList = students.filter(s => s.scores[examId] && s.scores[examId][sub.name] !== undefined);
         subRankList.sort((a, b) => b.scores[examId][sub.name] - a.scores[examId][sub.name]);
@@ -581,7 +625,6 @@ function refreshScoreBoard() {
         });
     });
 
-    // 最終渲染列表：名次高的人排在最前面，未填寫分數的移至最後方面
     currentDisplayedList = [...rankedGroup, ...unrankedGroup];
 
     tbody.innerHTML = currentDisplayedList.map(s => {
@@ -624,7 +667,6 @@ function openStudentDetailModal(studentId) {
     `;
 
     const modalTbody = document.querySelector('#modalSubjectRankTable tbody');
-    
     modalTbody.innerHTML = exam.subjects.map(sub => {
         const score = currentScores[sub.name];
         const hasScore = (score !== undefined);
@@ -654,13 +696,11 @@ function closeModal() {
     document.getElementById('studentDetailModal').style.display = 'none';
 }
 
-// --- 導出 Excel ---
 function exportToExcel() {
     const examId = document.getElementById('selExam').value;
     if(!examId || currentDisplayedList.length === 0) {
         return alert('請先選擇一場考試並輸入成績，才能匯出資料！');
     }
-    
     const exam = exams.find(e => e.id === examId);
     
     let headers = ["總排名", "座號", "學號", "姓名"];
@@ -672,7 +712,6 @@ function exportToExcel() {
     let excelRows = [headers];
     currentDisplayedList.forEach(s => {
         let row = [s.schoolRank, s.seat + "號", s.id, s.name];
-        
         const record = s.scores[examId] || {};
         exam.subjects.forEach(sub => {
             if(s._hasScore && record[sub.name] !== undefined) {
@@ -681,7 +720,6 @@ function exportToExcel() {
                 row.push("-", "-");
             }
         });
-        
         if(s._hasScore) {
             row.push(s._tempOriginal.toFixed(1), s._tempWeighted.toFixed(1), s._tempAvg.toFixed(1));
         } else {
@@ -693,7 +731,6 @@ function exportToExcel() {
     const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "考試排行榜看板");
-
     XLSX.writeFile(workbook, `${exam.name}_成績排行表.xlsx`);
 }
 </script>
