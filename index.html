@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>成績排行管理系統-智慧儲存版</title>
+    <title>成績排行管理系統-智慧連動版</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -159,7 +159,6 @@
         .bg-success { background-color: var(--success); }
         .bg-danger { background-color: var(--danger); }
         
-        /* 預警紅字樣式 */
         .alert-under-180 { color: #e74c3c; font-weight: bold; background-color: #fce4d6; padding: 2px 6px; border-radius: 4px; }
 
         .modal {
@@ -205,22 +204,34 @@
     <div id="examPage" class="page active">
         <h2 class="page-title">創建新考試</h2>
         
-        <h3>Step 1: 確認考試基本資訊（已自動預設）</h3>
+        <h3>Step 1: 確認考試基本資訊</h3>
         <div class="grid-selects">
             <div class="form-group">
-                <label>學年度</label>
-                <select id="examYear"><option value="114">114 學年度</option></select>
+                <label>學年度（含未來3年選擇）</label>
+                <select id="examYear">
+                    <option value="114">114 學年度</option>
+                    <option value="115">115 學年度</option>
+                    <option value="116">116 學年度</option>
+                    <option value="117">117 學年度</option>
+                </select>
             </div>
             <div class="form-group">
                 <label>學期</label>
-                <select id="examSemester"><option value="上學期">上學期</option></select>
+                <select id="examSemester">
+                    <option value="上學期">上學期</option>
+                    <option value="下學期">下學期</option>
+                </select>
             </div>
             <div class="form-group">
-                <label>適用年級</label>
-                <select id="examGrade"><option value="一年級">一年級</option></select>
+                <label>適用年級（切換時將聯動變更班級代號）</label>
+                <select id="examGrade" onchange="handleGradeChange()">
+                    <option value="一年級">一年級</option>
+                    <option value="二年級">二年級</option>
+                    <option value="三年級">三年級</option>
+                </select>
             </div>
             <div class="form-group">
-                <label>考試別（切換時將自動載入對應考科）</label>
+                <label>考試別（將自動載入對應考科）</label>
                 <select id="examType" onchange="autoLoadSubjects()">
                     <option value="第一次月考">第一次月考</option>
                     <option value="第二次月考">第二次月考</option>
@@ -232,8 +243,8 @@
                 <input type="text" id="examDept" value="電子科" readonly style="background:#eee;">
             </div>
             <div class="form-group">
-                <label>適用班級</label>
-                <input type="text" id="examClass" value="102" readonly style="background:#eee;">
+                <label>適用班別（跟隨年級自動聯動）</label>
+                <input type="text" id="examClass" value="102" readonly style="background:#eef7ff; font-weight: bold; color: var(--primary);">
             </div>
         </div>
         
@@ -281,7 +292,14 @@
                 <div class="form-group"><label>學號</label><input type="text" id="newStuId" placeholder="例如:410210"></div>
                 <div class="form-group"><label>姓名</label><input type="text" id="newStuName" placeholder="例如:王小明"></div>
                 <div class="form-group"><label>科系</label><input type="text" id="newStuDept" value="電子科"></div>
-                <div class="form-group"><label>班級</label><input type="text" id="newStuClass" value="102"></div>
+                <div class="form-group">
+                    <label>班級（可配合年級填102, 202, 302）</label>
+                    <select id="newStuClass">
+                        <option value="102">102</option>
+                        <option value="202">202</option>
+                        <option value="302">302</option>
+                    </select>
+                </div>
                 <div class="form-group"><label>座號</label><input type="number" id="newStuSeat" placeholder="例如:10"></div>
             </div>
             <button class="btn" style="background-color:#34495e; margin-top:5px;" onclick="addStudentManual()">👤 新增學生</button>
@@ -363,7 +381,7 @@
 </div>
 
 <script>
-// 預設的 9 位固定成員基本資料庫
+// 預設的 9 位固定成員基本資料庫（初始為 102 班）
 const defaultStudents = [
     { id: "410201", name: "王冠能", dept: "電子科", classId: "102", seat: 1, scores: {} },
     { id: "410202", name: "李育寰", dept: "電子科", classId: "102", seat: 2, scores: {} },
@@ -378,10 +396,9 @@ const defaultStudents = [
 
 let students = [];
 let exams = [];     
-let tempSubjects = []; // 當前準備創建的考科
+let tempSubjects = []; 
 
 window.onload = function() {
-    // 從 localStorage 讀取永久儲存的資料
     const storedExams = localStorage.getItem('rms_exams');
     const storedStudents = localStorage.getItem('rms_students');
     
@@ -396,9 +413,10 @@ window.onload = function() {
         saveStudentsToStorage();
     }
     
-    autoLoadSubjects(); // 載入預設第一次月考考科
+    autoLoadSubjects(); 
     updateStudentTable();
     updateExamUI();
+    handleGradeChange(); // 初始化班級連動
 };
 
 function saveExamsToStorage() {
@@ -420,11 +438,23 @@ function switchPage(pageId) {
     }
 }
 
-// 根據考考別自動判定帶入科目配置
+// 核心連動：年級切換時自動修改適用班別欄位
+function handleGradeChange() {
+    const grade = document.getElementById('examGrade').value;
+    const classInput = document.getElementById('examClass');
+    
+    if (grade === "一年級") {
+        classInput.value = "102";
+    } else if (grade === "二年級") {
+        classInput.value = "202";
+    } else if (grade === "三年級") {
+        classInput.value = "302";
+    }
+}
+
 function autoLoadSubjects() {
     const type = document.getElementById('examType').value;
     
-    // 基礎的五個科目
     const baseSubjects = [
         { name: "國文", pass: 60, weight: 3 },
         { name: "英文", pass: 60, weight: 2 },
@@ -436,7 +466,6 @@ function autoLoadSubjects() {
     if(type === "第一次月考") {
         tempSubjects = [...baseSubjects];
     } else {
-        // 第二次月考與期末考，自動追加入兩個科目
         tempSubjects = [
             ...baseSubjects,
             { name: "健康護理", pass: 60, weight: 1 },
@@ -485,15 +514,14 @@ function createExam() {
     const fullName = `${year}學年度-${semester}-${grade}-${type}`;
     const scopeName = `${dept}/${classId}`;
 
-    // 檢查是否有重複名稱
-    if(exams.some(e => e.name === fullName)) {
-        if(!confirm('已存在同名考試，是否仍要重複建立？')) return;
+    if(exams.some(e => e.name === fullName && e.scope === scopeName)) {
+        if(!confirm('已存在此年級與班別的同名考試，是否仍要重複建立？')) return;
     }
 
     exams.push({ 
         id: 'E' + Date.now(), 
         name: fullName, 
-        type: type, // 紀錄考試類別，用以比對180分規則
+        type: type, 
         scope: scopeName,
         targetDept: dept,
         targetClass: classId,
@@ -502,7 +530,7 @@ function createExam() {
     
     saveExamsToStorage();
     updateExamUI();
-    alert(`考試創建成功，已永久儲存於本機記憶體！`);
+    alert(`考試創建成功！班別連動為：${classId}班，已永久儲存於本機。`);
     switchPage('examListPage');
 }
 
@@ -516,7 +544,7 @@ function updateExamUI() {
         <tr>
             <td><strong>${e.name}</strong></td>
             <td>${e.subjects.map(s => `${s.name}(${s.weight}x)`).join(', ')}</td>
-            <td><span class="badge" style="background:#34495e">${e.scope}</span></td>
+            <td><span class="badge" style="background:#2980b9">${e.scope}</span></td>
             <td><button class="btn-delete-sub" onclick="deleteExam(${idx})">刪除</button></td>
         </tr>
     `).join('');
@@ -535,11 +563,17 @@ function addStudentManual() {
     const id = document.getElementById('newStuId').value.trim();
     const name = document.getElementById('newStuName').value.trim();
     const dept = document.getElementById('newStuDept').value.trim();
-    const classId = document.getElementById('newStuClass').value.trim();
+    const classId = document.getElementById('newStuClass').value;
     const seat = parseInt(document.getElementById('newStuSeat').value);
     
     if(!id || !name || !dept || !classId || isNaN(seat)) return alert('請完整填寫學生資料欄位！');
     
+    // 防呆：檢查是否重複
+    if(students.some(s => s.id === id)) {
+        alert('此學號已存在於名冊中！');
+        return;
+    }
+
     students.push({ id, name, dept, classId, seat, scores: {} });
     saveStudentsToStorage();
     updateStudentTable();
@@ -547,7 +581,7 @@ function addStudentManual() {
     document.getElementById('newStuId').value = '';
     document.getElementById('newStuName').value = '';
     document.getElementById('newStuSeat').value = '';
-    alert(`成功加入本機名冊：${name}`);
+    alert(`成功加入本機名冊：[${classId}班] ${name}`);
 }
 
 function deleteStudent(index) {
@@ -559,7 +593,7 @@ function deleteStudent(index) {
 }
 
 function resetStudentsConfirm() {
-    if(confirm('這將會清空本機上自訂修改的學生成績與名冊，回復到最初截圖的9位學生。確定嗎？')) {
+    if(confirm('這將會清空本機上自訂修改的學生成績與名冊，回復到最初的 9 位學生（預設 102 班）。確定嗎？')) {
         students = JSON.parse(JSON.stringify(defaultStudents));
         saveStudentsToStorage();
         updateStudentTable();
@@ -568,12 +602,14 @@ function resetStudentsConfirm() {
 
 function updateStudentTable() {
     const tbody = document.querySelector('#studentTable tbody');
+    // 排序方便檢視
+    students.sort((a,b) => a.classId.localeCompare(b.classId) || a.seat - b.seat);
     tbody.innerHTML = students.map((s, idx) => `
         <tr>
             <td>${s.id}</td>
             <td><strong>${s.name}</strong></td>
             <td>${s.dept}</td>
-            <td>${s.classId}</td>
+            <td><span class="badge" style="background:#16a085">${s.classId}</span></td>
             <td>${s.seat}號</td>
             <td><button class="btn-delete-sub" onclick="deleteStudent(${idx})">移除</button></td>
         </tr>
@@ -584,7 +620,7 @@ function updateStudentTable() {
 function refreshExamSelect() {
     const selExam = document.getElementById('selExam');
     const savedValue = selExam.value;
-    selExam.innerHTML = '<option value="">--請選擇考試--</option>' + exams.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    selExam.innerHTML = '<option value="">--請選擇考試--</option>' + exams.map(e => `<option value="${e.id}">${e.name} (${e.targetClass}班)</option>`).join('');
     if(exams.some(e => e.id === savedValue)) {
         selExam.value = savedValue;
     } else {
@@ -603,12 +639,17 @@ function initStudentSelect() {
         return;
     }
     const exam = exams.find(e => e.id === examId);
-    document.getElementById('currentExamNameTitle').textContent = exam.name;
+    document.getElementById('currentExamNameTitle').textContent = exam.name + ` (${exam.targetClass}班)`;
     
+    // 智慧過濾：只篩選出與目前選定的考試班級（102/202/302）相符的學生
     let filteredStudents = students.filter(s => s.dept === exam.targetDept && s.classId === exam.targetClass);
-    if(filteredStudents.length === 0) filteredStudents = students;
-
-    selStudent.innerHTML = '<option value="">--請選擇學生--</option>' + filteredStudents.map(s => `<option value="${s.id}">${s.seat}號 - ${s.name}</option>`).join('');
+    
+    // 如果名冊裡剛好沒有該班級學生，顯示提示供引導
+    if(filteredStudents.length === 0) {
+        selStudent.innerHTML = '<option value="">--該班級尚無學生，請先至學生管理區新增--</option>';
+    } else {
+        selStudent.innerHTML = '<option value="">--請選擇學生--</option>' + filteredStudents.map(s => `<option value="${s.id}">${s.seat}號 - ${s.name}</option>`).join('');
+    }
     refreshScoreBoard();
 }
 
@@ -659,7 +700,7 @@ function saveQuickScores() {
         }
     });
     
-    saveStudentsToStorage(); // 寫入本機永久記憶體
+    saveStudentsToStorage(); 
     alert('成績儲存成功！');
     refreshScoreBoard();
     renderSubjectScoreInputs();
@@ -682,7 +723,10 @@ function refreshScoreBoard() {
     const examIndex = exams.findIndex(e => e.id === examId);
     const prevExam = examIndex > 0 ? exams[examIndex - 1] : null;
 
-    students.forEach(s => {
+    // 篩選出屬於該場考試特定班級的學生成績單
+    let targetClassStudents = students.filter(s => s.classId === exam.targetClass);
+
+    targetClassStudents.forEach(s => {
         let originalTotal = 0;
         let weightedTotal = 0;
         let hasScore = false;
@@ -698,7 +742,7 @@ function refreshScoreBoard() {
         
         s._tempOriginal = hasScore ? originalTotal : 0;
         s._tempWeighted = hasScore ? weightedTotal : 0;
-        s._tempAvg = hasScore ? (weightedTotal / exam.subjects.reduce((acc, x) => acc + x.weight, 0)) : 0; // 加權平均
+        s._tempAvg = hasScore ? (weightedTotal / exam.subjects.reduce((acc, x) => acc + x.weight, 0)) : 0; 
         s._hasScore = hasScore;
 
         if (prevExam) {
@@ -717,10 +761,9 @@ function refreshScoreBoard() {
         }
     });
 
-    let rankedGroup = students.filter(p => p._hasScore);
-    let unrankedGroup = students.filter(p => !p._hasScore);
+    let rankedGroup = targetClassStudents.filter(p => p._hasScore);
+    let unrankedGroup = targetClassStudents.filter(p => !p._hasScore);
 
-    // 依據加權成績計算排名
     rankedGroup.sort((a, b) => b._tempWeighted - a._tempWeighted);
     
     for(let i = 0; i < rankedGroup.length; i++) {
@@ -739,12 +782,11 @@ function refreshScoreBoard() {
         s.schoolRank = '-'; s.deptRank = '-'; s.classRank = '-';
     });
 
-    // 學科獨立名次運算
     exam.subjects.forEach(sub => {
-        let subRankList = students.filter(s => s.scores[examId] && s.scores[examId][sub.name] !== undefined);
+        let subRankList = targetClassStudents.filter(s => s.scores[examId] && s.scores[examId][sub.name] !== undefined);
         subRankList.sort((a, b) => b.scores[examId][sub.name] - a.scores[examId][sub.name]);
         
-        students.forEach(s => {
+        targetClassStudents.forEach(s => {
             if(!s._subRanks) s._subRanks = {};
             if(s.scores[examId] && s.scores[examId][sub.name] !== undefined) {
                 const targetScore = s.scores[examId][sub.name];
@@ -758,6 +800,11 @@ function refreshScoreBoard() {
 
     currentDisplayedList = [...rankedGroup, ...unrankedGroup];
 
+    if(currentDisplayedList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="color:#aaa; text-align:center;">此班級目前無學生名冊資料。</td></tr>`;
+        return;
+    }
+
     tbody.innerHTML = currentDisplayedList.map(s => {
         let progressText = "-";
         if(s._prevWeighted !== null && s._hasScore) {
@@ -767,7 +814,6 @@ function refreshScoreBoard() {
             else progressText = "持平";
         }
 
-        // 期末考未加權總分低於 180 分紅字高亮邏輯
         let originalTotalDisplay = s._hasScore ? s._tempOriginal.toFixed(1) : '-';
         if(exam.type === "期末考" && s._hasScore && s._tempOriginal < 180) {
             originalTotalDisplay = `<span class="alert-under-180">${s._tempOriginal.toFixed(1)} (未滿180)</span>`;
