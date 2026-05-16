@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校園成績排行與管理系統</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --light: #ecf0f1;
+        }
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav button {
+            background: none;
+            border: 1px solid white;
+            color: white;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-left: 10px;
+            transition: 0.3s;
+        }
+        nav button.active, nav button:hover {
+            background-color: white;
+            color: var(--primary);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; color: var(--primary); }
+        
+        /* 表單樣式 */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; background: var(--light); padding: 10px; border-radius: 4px; }
+        .checkbox-group label { display: flex; align-items: center; gap: 5px; font-weight: normal; cursor: pointer; }
+        .checkbox-group input { width: auto; }
+        
+        button.btn {
+            background-color: var(--primary); color: white; border: none; padding: 10px 20px;
+            cursor: pointer; border-radius: 4px; font-size: 16px;
+        }
+        button.btn:hover { background-color: var(--secondary); }
+        
+        /* 表格樣式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: var(--light); color: var(--primary); }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        
+        /* 標籤狀態 */
+        .badge { padding: 3px 8px; border-radius: 4px; color: white; font-size: 12px; }
+        .bg-success { background-color: var(--success); }
+        .bg-danger { background-color: var(--danger); }
+        
+        /* 彈窗樣式 */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; width: 80%; max-width: 700px; max-height: 85vh; overflow-y: auto; }
+        .close-btn { float: right; font-size: 24px; cursor: pointer; }
+        
+        .flex-container { display: flex; gap: 20px; }
+        .flex-child { flex: 1; }
+        
+        .up { color: var(--danger); font-weight: bold; } /* 紅色表示進步/上升 */
+        .down { color: var(--success); font-weight: bold; } /* 綠色表示退步/下降 */
+    </style>
+</head>
+<body>
+
+<header>
+    <h2>🏫 校務成績管理系統</h2>
+    <nav>
+        <button onclick="switchPage('examPage')" id="btn-examPage" class="active">考試設定</button>
+        <button onclick="switchPage('studentPage')" id="btn-studentPage">學生管理</button>
+        <button onclick="switchPage('scorePage')" id="btn-scorePage">成績總管</button>
+    </nav>
+</header>
+
+<div class="container">
+    
+    <!-- 1. 考試設定頁面 -->
+    <div id="examPage" class="page active">
+        <h2>創建與管理考試</h2>
+        <div class="flex-container">
+            <div class="flex-child" style="border-right: 1px solid #eee; padding-right: 20px;">
+                <h3>新增考試與科目</h3>
+                <div class="form-group">
+                    <label>考試名稱</label>
+                    <input type="text" id="examName" placeholder="例如：115學年度第一學期期中考">
+                </div>
+                <div class="form-group">
+                    <label>考試科目與規則</label>
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                        <input type="text" id="subName" placeholder="科目名稱 (例: 數學)" style="flex:2;">
+                        <input type="number" id="subPass" placeholder="及格分數 (60)" style="flex:1;" value="60">
+                        <input type="number" id="subWeight" placeholder="加權指數 (1.0)" style="flex:1;" value="1" step="0.1">
+                        <button type="button" onclick="addSubjectRow()">添加科目</button>
+                    </div>
+                    <ul id="addedSubjectsList"></ul>
+                </div>
+                <div class="form-group">
+                    <label>應試科系 (可複選)</label>
+                    <div class="checkbox-group" id="examDepts">
+                        <label><input type="checkbox" value="資訊科"> 資訊科</label>
+                        <label><input type="checkbox" value="商經科"> 商經科</label>
+                        <label><input type="checkbox" value="電機科"> 電機科</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>應試班級 (可複選)</label>
+                    <div class="checkbox-group" id="examClasses">
+                        <label><input type="checkbox" value="101"> 101 班</label>
+                        <label><input type="checkbox" value="102"> 102 班</label>
+                        <label><input type="checkbox" value="201"> 201 班</label>
+                    </div>
+                </div>
+                <button class="btn" onclick="createExam()">儲存並創建考試</button>
+            </div>
+            
+            <div class="flex-child">
+                <h3>現有考試列表</h3>
+                <table id="examTable">
+                    <thead>
+                        <tr><th>考試名稱</th><th>科目數</th><th>適用範圍</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 學生管理頁面 -->
+    <div id="studentPage" class="page">
+        <h2>學生基本資訊管理</h2>
+        <div class="flex-container">
+            <div class="flex-child" style="border-right: 1px solid #eee; padding-right: 20px;">
+                <h3>新增學生</h3>
+                <div class="form-group"><label>學號</label><input type="text" id="stuId"></div>
+                <div class="form-group"><label>姓名</label><input type="text" id="stuName"></div>
+                <div class="form-group">
+                    <label>科系</label>
+                    <select id="stuDept">
+                        <option value="資訊科">資訊科</option><option value="商經科">商經科</option><option value="電機科">電機科</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>班級</label>
+                    <select id="stuClass">
+                        <option value="101">101 班</option><option value="102">102 班</option><option value="201">201 班</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>座號</label><input type="number" id="stuSeat"></div>
+                <button class="btn" onclick="createStudent()">新增學生</button>
+            </div>
+            <div class="flex-child">
+                <h3>學生名冊</h3>
+                <table id="studentTable">
+                    <thead>
+                        <tr><th>學號</th><th>姓名</th><th>科系班級</th><th>座號</th><th>操作</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 成績總管頁面 -->
+    <div id="scorePage" class="page">
+        <h2>成績總管中心</h2>
+        <div class="form-group" style="max-width: 300px;">
+            <label>選擇要檢視的考試：</label>
+            <select id="scoreExamSelect" onchange="refreshScoreManager()"></select>
+        </div>
+        
+        <table id="scoreManagerTable">
+            <thead>
+                <tr>
+                    <th>學號</th><th>姓名</th><th>科系班級</th>
+                    <th>原始總分</th><th>加權總分</th>
+                    <th>校排</th><th>科排</th><th>班排</th>
+                    <th>進退步(較前次)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 學生個人資訊與成績修改彈窗 (Modal) -->
+<div id="studentModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modalStudentTitle">學生詳細資訊</h2>
+        
+        <div id="modalInfoArea"></div>
+        <hr>
+        <h3>📊 歷史與本次考試表現</h3>
+        <div id="modalPerformanceArea"></div>
+        <hr>
+        <h3>✏️ 本次考試各科成績修改</h3>
+        <div id="modalScoreEditArea"></div>
+        <br>
+        <button class="btn" onclick="saveScores()">儲存成績修改</button>
+    </div>
+</div>
+
+<script>
+// --- 資料庫定義 ---
+let exams = [];     // 存放考試資訊
+let students = [];  // 存放學生資訊
+let currentEditingStudentId = null;
+let tempSubjects = []; // 暫存目前正在輸入的科目
+
+// 預填初始化範例資料
+function initData() {
+    students = [
+        { id: "S001", name: "張小明", dept: "資訊科", class: "101", seat: 1, scores: {} },
+        { id: "S002", name: "李大同", dept: "資訊科", class: "101", seat: 2, scores: {} },
+        { id: "S003", name: "王美麗", dept: "商經科", class: "102", seat: 1, scores: {} },
+        { id: "S004", name: "陳學霸", dept: "資訊科", class: "101", seat: 3, scores: {} }
+    ];
+    // 預設一筆考試
+    exams = [{
+        id: "E01",
+        name: "第一次段考",
+        depts: ["資訊科", "商經科", "電機科"],
+        classes: ["101", "102", "201"],
+        subjects: [
+            { name: "國文", pass: 60, weight: 1.0 },
+            { name: "數學", pass: 60, weight: 2.0 }
+        ]
+    }];
+    // 給予預設成績
+    students[0].scores["E01"] = { "國文": 55, "數學": 70 }; // 原始:125, 加權: 195
+    students[1].scores["E01"] = { "國文": 80, "數學": 60 }; // 原始:140, 加權: 200
+    students[2].scores["E01"] = { "國文": 90, "數學": 45 }; // 原始:135, 加權: 180
+    students[3].scores["E01"] = { "國文": 95, "數學": 95 }; // 原始:190, 加權: 285
+
+    updateExamUI();
+    updateStudentTable();
+    updateExamSelectOptions();
+}
+
+// --- 通用分頁切換 ---
+function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    document.getElementById('btn-' + pageId).classList.add('active');
+    
+    if(pageId === 'scorePage') refreshScoreManager();
+}
+
+// --- 1. 考試功能 ---
+function addSubjectRow() {
+    const name = document.getElementById('subName').value.trim();
+    const pass = parseFloat(document.getElementById('subPass').value);
+    const weight = parseFloat(document.getElementById('subWeight').value);
+    if(!name || isNaN(pass) || isNaN(weight)) return alert('請填寫完整科目資訊');
+    
+    tempSubjects.push({ name, pass, weight });
+    document.getElementById('subName').value = '';
+    
+    const li = document.createElement('li');
+    li.textContent = `${name} (及格:${pass}分, 加權:${weight})`;
+    document.getElementById('addedSubjectsList').appendChild(li);
+}
+
+function createExam() {
+    const name = document.getElementById('examName').value.trim();
+    if(!name || tempSubjects.length === 0) return alert('請輸入考試名稱並至少添加一個科目！');
+    
+    const depts = Array.from(document.querySelectorAll('#examDepts input:checked')).map(i => i.value);
+    const classes = Array.from(document.querySelectorAll('#examClasses input:checked')).map(i => i.value);
+    
+    if(depts.length===0 || classes.length===0) return alert('請勾選至少一個應試科系與班級！');
+
+    exams.push({ id: 'E' + Date.now(), name, depts, classes, subjects: tempSubjects });
+    
+    tempSubjects = [];
+    document.getElementById('examName').value = '';
+    document.getElementById('addedSubjectsList').innerHTML = '';
+    
+    updateExamUI();
+    updateExamSelectOptions();
+    alert('考試創建成功！');
+}
+
+function updateExamUI() {
+    const tbody = document.querySelector('#examTable tbody');
+    tbody.innerHTML = exams.map(e => `
+        <tr>
+            <td>${e.name}</td>
+            <td>${e.subjects.length} 科</td>
+            <td>${e.depts.join(',')}<br>${e.classes.join(',')}</td>
+        </tr>
+    `).join('');
+}
+
+function updateExamSelectOptions() {
+    const select = document.getElementById('scoreExamSelect');
+    select.innerHTML = exams.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+// --- 2. 學生功能 ---
+function createStudent() {
+    const id = document.getElementById('stuId').value.trim();
+    const name = document.getElementById('stuName').value.trim();
+    const dept = document.getElementById('stuDept').value;
+    const sClass = document.getElementById('stuClass').value;
+    const seat = parseInt(document.getElementById('stuSeat').value);
+    
+    if(!id || !name || isNaN(seat)) return alert('請填妥學生完整資訊！');
+    if(students.some(s => s.id === id)) return alert('學號已存在！');
+
+    students.push({ id, name, dept, class: sClass, seat, scores: {} });
+    updateStudentTable();
+    
+    document.getElementById('stuId').value = '';
+    document.getElementById('stuName').value = '';
+    document.getElementById('stuSeat').value = '';
+}
+
+function updateStudentTable() {
+    const tbody = document.querySelector('#studentTable tbody');
+    tbody.innerHTML = students.map(s => `
+        <tr>
+            <td>${s.id}</td>
+            <td>${s.name}</td>
+            <td>${s.dept} / ${s.class}班</td>
+            <td>${s.seat}號</td>
+            <td><button onclick="openStudentModal('${s.id}')">檢視 / 修改</button></td>
+        </tr>
+    `).join('');
+}
+
+// --- 3. 成績總管與排名核心演算法 ---
+function refreshScoreManager() {
+    const examId = document.getElementById('scoreExamSelect').value;
+    if(!examId) return;
+    const exam = exams.find(e => e.id === examId);
+    
+    // 找出所有符合此考試資格的學生
+    let participants = students.filter(s => exam.depts.includes(s.dept) && exam.classes.includes(s.class));
+    
+    // 找出前一次考試的 ID（用於計算進退步）
+    const examIndex = exams.findIndex(e => e.id === examId);
+    const prevExam = examIndex > 0 ? exams[examIndex - 1] : null;
+
+    // 計算每個學生的總分、加權總分與前次加權總分
+    participants.forEach(s => {
+        let originalTotal = 0;
+        let weightedTotal = 0;
+        let hasScore = false;
+
+        const record = s.scores[examId] || {};
+        exam.subjects.forEach(sub => {
+            if(record[sub.name] !== undefined) {
+                const score = record[sub.name];
+                originalTotal += score;
+                weightedTotal += score * sub.weight;
+                hasScore = true;
+            }
+        });
+        
+        s._tempOriginal = hasScore ? originalTotal : 0;
+        s._tempWeighted = hasScore ? weightedTotal : 0;
+
+        // 計算前一次考試的加權總分
+        if (prevExam) {
+            let prevWeightedTotal = 0;
+            let prevHasScore = false;
+            const prevRecord = s.scores[prevExam.id] || {};
+            prevExam.subjects.forEach(sub => {
+                if(prevRecord[sub.name] !== undefined) {
+                    prevWeightedTotal += prevRecord[sub.name] * sub.weight;
+                    prevHasScore = true;
+                }
+            });
+            s._prevWeighted = prevHasScore ? prevWeightedTotal : null;
+        } else {
+            s._prevWeighted = null;
+        }
+    });
+
+    // 進行校排名排序 (依加權總分)
+    participants.sort((a,b) => b._tempWeighted - a._tempWeighted);
+    calculateRanks(participants, 'schoolRank');
+
+    // 進行科排名排序
+    const deptsGroup = groupBy(participants, 'dept');
+    Object.values(deptsGroup).forEach(group => {
+        group.sort((a,b) => b._tempWeighted - a._tempWeighted);
+        calculateRanks(group, 'deptRank');
+    });
+
+    // 進行班排名排序
+    const classGroup = groupBy(participants, 'class');
+    Object.values(classGroup).forEach(group => {
+        group.sort((a,b) => b._tempWeighted - a._tempWeighted);
+        calculateRanks(group, 'classRank');
+    });
+
+    // 渲染表格
+    const tbody = document.querySelector('#scoreManagerTable tbody');
+    tbody.innerHTML = participants.map(s => {
+        let progressText = "-";
+        if(s._prevWeighted !== null && s._tempWeighted > 0) {
+            const diff = (s._tempWeighted - s._prevWeighted).toFixed(1);
+            if(diff > 0) progressText = `<span class="up">▲ +${diff}</span>`;
+            else if(diff < 0) progressText = `<span class="down">▼ ${diff}</span>`;
+            else progressText = "持平";
+        }
+
+        return `
+            <tr>
+                <td>${s.id}</td>
+                <td><a href="#" onclick="openStudentModal('${s.id}')">${s.name}</a></td>
+                <td>${s.dept} / ${s.class}班</td>
+                <td>${s._tempOriginal.toFixed(1)}</td>
+                <td><strong>${s._tempWeighted.toFixed(1)}</strong></td>
+                <td>${s.schoolRank}</td>
+                <td>${s.deptRank}</td>
+                <td>${s.classRank}</td>
+                <td>${progressText}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 輔助函式：計算排名（處理同分同名次）
+function calculateRanks(list, rankKey) {
+    let currentRank = 1;
+    for(let i=0; i<list.length; i++) {
+        if(i > 0 && list[i]._tempWeighted === list[i-1]._tempWeighted) {
+            list[i][rankKey] = list[i-1][rankKey];
+        } else {
+            list[i][rankKey] = i + 1;
+        }
+    }
+}
+// 輔助函式：資料分組
+function groupBy(array, key) {
+    return array.reduce((result, currentValue) => {
+        (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+        return result;
+    }, {});
+}
+
+// --- 4. 學生個人詳細資訊視窗 (Modal) 與成績修改 ---
+function openStudentModal(studentId) {
+    currentEditingStudentId = studentId;
+    const student = students.find(s => s.id === studentId);
+    const examId = document.getElementById('scoreExamSelect').value || exams[0]?.id;
+    const exam = exams.find(e => e.id === examId);
+
+    document.getElementById('modalStudentTitle').textContent = `學生檔案：${student.name} (${student.id})`;
+    
+    // 基本資訊
+    document.getElementById('modalInfoArea').innerHTML = `
+        <p><strong>科系：</strong>${student.dept} &nbsp;&nbsp;|&nbsp;&nbsp; 
+           <strong>班級：</strong>${student.class} 班 &nbsp;&nbsp;|&nbsp;&nbsp; 
+           <strong>座號：</strong>${student.seat} 號</p>
+    `;
+
+    if(!exam) {
+        document.getElementById('modalScoreEditArea').innerHTML = "請先至『考試設定』創建考試。";
+        document.getElementById('studentModal').style.display = 'flex';
+        return;
+    }
+
+    // 顯示及格與不及格科目、進退步
+    const currentScores = student.scores[examId] || {};
+    let passList = [];
+    let failList = [];
+    
+    exam.subjects.forEach(sub => {
+        const score = currentScores[sub.name];
+        if(score !== undefined) {
+            const infoText = `${sub.name}: ${score}分 (加權後: ${score * sub.weight})`;
+            if(score >= sub.pass) passList.push(`<span class="badge bg-success">${infoText}</span>`);
+            else failList.push(`<span class="badge bg-danger">${infoText}</span>`);
+        }
+    });
+
+    let progressHistoryText = "尚無前次考試對比數據。";
+    if(student._prevWeighted !== null && student._tempWeighted > 0) {
+        const diff = (student._tempWeighted - student._prevWeighted).toFixed(1);
+        progressHistoryText = diff > 0 ? 
+            `<span class="up">比上一次考試進步了 ${diff} 分 (加權)</span>` : 
+            `<span class="down">比上一次考試退步了 ${Math.abs(diff)} 分 (加權)</span>`;
+    }
+
+    document.getElementById('modalPerformanceArea').innerHTML = `
+        <p><strong>當前考卷：</strong>${exam.name}</p>
+        <p><strong>🟢 及格科目：</strong> ${passList.length ? passList.join(' ') : '無'}</p>
+        <p><strong>🔴 不及格科目：</strong> ${failList.length ? failList.join(' ') : '無'}</p>
+        <p><strong>📈 成長軌跡：</strong> ${progressHistoryText}</p>
+    `;
+
+    // 編輯分數表單
+    let editHtml = `<form id="editScoreForm">`;
+    exam.subjects.forEach(sub => {
+        const score = currentScores[sub.name] !== undefined ? currentScores[sub.name] : "";
+        editHtml += `
+            <div class="form-group" style="display:flex; align-items:center; gap:10px;">
+                <label style="width:100px; margin:0;">${sub.name}:</label>
+                <input type="number" name="${sub.name}" value="${score}" max="100" min="0" placeholder="尚未輸入分數">
+                <span style="color:#666; font-size:13px;">(及格標準: ${sub.pass} | 加權: ${sub.weight}x)</span>
+            </div>
+        `;
+    });
+    editHtml += `</form>`;
+    document.getElementById('modalScoreEditArea').innerHTML = editHtml;
+
+    document.getElementById('studentModal').style.display = 'flex';
+}
+
+function saveScores() {
+    const student = students.find(s => s.id === currentEditingStudentId);
+    const examId = document.getElementById('scoreExamSelect').value || exams[0]?.id;
+    
+    if(!student || !examId) return;
+
+    const form = document.getElementById('editScoreForm');
+    const formData = new FormData(form);
+    
+    if(!student.scores[examId]) student.scores[examId] = {};
+
+    for (let [subjectName, scoreValue] of formData.entries()) {
+        if(scoreValue.trim() !== "") {
+            student.scores[examId][subjectName] = parseFloat(scoreValue);
+        } else {
+            delete student.scores[examId][subjectName]; // 留空則刪除該科成績
+        }
+    }
+
+    alert(`${student.name} 的成績修改成功！`);
+    closeModal();
+    refreshScoreManager(); // 即時更新排名的總管報表
+}
+
+function closeModal() {
+    document.getElementById('studentModal').style.display = 'none';
+}
+
+// 啟動初始化
+window.onload = initData;
+</script>
+
+</body>
+</html>
