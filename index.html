@@ -11,7 +11,7 @@
             --secondary: #34495e;
             --success: #2ecc71;
             --danger: #e74c3c;
-            --warning: #f1c40f;
+            --warning: #e67e22;
             --light: #ecf0f1;
         }
         body {
@@ -21,19 +21,24 @@
             padding: 0;
             color: #333;
         }
+        
+        /* 導覽列與全新漢堡選單樣式 */
         header {
             background-color: var(--primary);
             color: white;
-            padding: 10px;
-            text-align: center;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1001;
         }
-        header h2 { margin: 5px 0 10px 0; font-size: 20px; }
+        header h2 { margin: 0; font-size: 20px; }
 
+        /* 桌機版導覽列 */
         nav {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 5px;
+            gap: 10px;
         }
         nav button {
             background: none;
@@ -51,6 +56,45 @@
             font-weight: bold;
         }
 
+        /* 漢堡按鈕圖示 (三條線) */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .hamburger span {
+            width: 100%;
+            height: 2px;
+            background-color: white;
+            transition: all 0.3s ease;
+        }
+
+        /* 預警功能特定樣式 */
+        .warning-box {
+            background: #fff5f5;
+            border-left: 5px solid var(--danger);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        .warning-status-tag {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        .status-pass { background-color: var(--success); }
+        .status-reexam { background-color: #f39c12; }
+        .status-fail { background-color: var(--danger); }
+
+        /* 主容器與SPA頁面結構 */
         .container {
             max-width: 950px;
             margin: 10px auto;
@@ -59,7 +103,6 @@
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-
         .page { display: none; }
         .page.active { display: block; }
 
@@ -185,13 +228,42 @@
             padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;
             font-size: 14px; display: flex; align-items: center; gap: 5px;
         }
+
+        /* 手機行動端 RWD 漢堡選單回應式佈局 */
+        @media (max-width: 768px) {
+            .hamburger { display: flex; }
+            nav {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background-color: var(--primary);
+                padding: 10px 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            nav.open { display: flex; }
+            nav button {
+                width: 90%;
+                margin: 5px auto;
+                text-align: center;
+                padding: 10px;
+            }
+            .grid-selects { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
 <header>
     <h2>成績排行管理系統</h2>
-    <nav>
+    <button class="hamburger" onclick="toggleMenu()" aria-label="切換選單">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <nav id="navMenu">
         <button onclick="switchPage('examPage')" id="btn-examPage" class="active">考試設定</button>
         <button onclick="switchPage('examListPage')" id="btn-examListPage">考試列表</button>
         <button onclick="switchPage('studentPage')" id="btn-studentPage">學生管理</button>
@@ -203,7 +275,6 @@
 
     <div id="examPage" class="page active">
         <h2 class="page-title">創建新考試</h2>
-
         <h3>Step 1: 確認考試基本資訊</h3>
         <div class="grid-selects">
             <div class="form-group">
@@ -293,7 +364,7 @@
                 <div class="form-group"><label>姓名</label><input type="text" id="newStuName" placeholder="例如:王小明"></div>
                 <div class="form-group"><label>科系</label><input type="text" id="newStuDept" value="電子科"></div>
                 <div class="form-group">
-                    <label>班級（可配合年級填102, 202, 302）</label>
+                    <label>班級</label>
                     <select id="newStuClass">
                         <option value="102">102</option>
                         <option value="202">202</option>
@@ -330,13 +401,26 @@
                     <select id="selExam" onchange="initStudentSelect()"><option value="">--請選擇考試--</option></select>
                 </div>
                 <div class="form-group">
-                    <label>登錄學生成績：</label>
-                    <select id="selStudent" onchange="renderSubjectScoreInputs()"><option value="">--請選擇學生--</option></select>
+                    <label>選取登錄/預警學生：</label>
+                    <select id="selStudent" onchange="handleStudentSelectChange()"><option value="">--請選擇學生--</option></select>
                 </div>
             </div>
 
-            <div id="dynamicScoreFields" style="margin-top: 15px; display: none; background: white; padding: 15px; border-radius: 6px;">
-                <h4 style="margin-top: 0; color: var(--primary);">分數填寫：</h4>
+            <div id="earlyWarningPanel" style="display:none;" class="warning-box">
+                <h4 style="margin:0 0 10px 0; color:var(--primary);">提前預警詳細診斷狀態</h4>
+                <div id="warningSummary" style="font-size:14px; margin-bottom:10px; line-height:1.5;"></div>
+                <div class="table-responsive">
+                    <table style="min-width:100%; background:white;" id="warningDetailTable">
+                        <thead>
+                            <tr><th>學科</th><th>目前得分</th><th>學分狀態評估</th><th>輔導建議</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="dynamicScoreFields" style="margin-top: 15px; display: none; background: white; padding: 15px; border-radius: 6px; border:1px solid #ddd;">
+                <h4 style="margin-top: 0; color: var(--primary);">分數填寫與修改：</h4>
                 <div id="fieldsContainer"></div>
                 <button class="btn" style="background-color: #2ecc71; margin-top: 15px;" onclick="saveQuickScores()">寫入並更新動態排行</button>
             </div>
@@ -401,10 +485,7 @@ window.onload = function() {
     const storedExams = localStorage.getItem('rms_exams');
     const storedStudents = localStorage.getItem('rms_students');
 
-    if(storedExams) {
-        exams = JSON.parse(storedExams);
-    }
-
+    if(storedExams) { exams = JSON.parse(storedExams); }
     if(storedStudents) {
         students = JSON.parse(storedStudents);
     } else {
@@ -418,41 +499,33 @@ window.onload = function() {
     handleGradeChange();
 };
 
-function saveExamsToStorage() {
-    localStorage.setItem('rms_exams', JSON.stringify(exams));
+function toggleMenu() {
+    document.getElementById('navMenu').classList.toggle('open');
 }
 
-function saveStudentsToStorage() {
-    localStorage.setItem('rms_students', JSON.stringify(students));
-}
+function saveExamsToStorage() { localStorage.setItem('rms_exams', JSON.stringify(exams)); }
+function saveStudentsToStorage() { localStorage.setItem('rms_students', JSON.stringify(students)); }
 
 function switchPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     document.getElementById('btn-' + pageId).classList.add('active');
+    document.getElementById('navMenu').classList.remove('open'); // 點擊後自動收起漢堡選單
 
-    if(pageId === 'scorePage') {
-        refreshExamSelect();
-    }
+    if(pageId === 'scorePage') { refreshExamSelect(); }
 }
 
 function handleGradeChange() {
     const grade = document.getElementById('examGrade').value;
     const classInput = document.getElementById('examClass');
-
-    if (grade === "一年級") {
-        classInput.value = "102";
-    } else if (grade === "二年級") {
-        classInput.value = "202";
-    } else if (grade === "三年級") {
-        classInput.value = "302";
-    }
+    if (grade === "一年級") classInput.value = "102";
+    else if (grade === "二年級") classInput.value = "202";
+    else if (grade === "三年級") classInput.value = "302";
 }
 
 function autoLoadSubjects() {
     const type = document.getElementById('examType').value;
-
     const baseSubjects = [
         { name: "國文", pass: 60, weight: 3 },
         { name: "英文", pass: 60, weight: 2 },
@@ -501,7 +574,6 @@ function deleteTempSubject(index) {
 
 function createExam() {
     if(tempSubjects.length === 0) return alert('請至少包含一個科目！');
-
     const year = document.getElementById('examYear').value;
     const semester = document.getElementById('examSemester').value;
     const grade = document.getElementById('examGrade').value;
@@ -517,13 +589,8 @@ function createExam() {
     }
 
     exams.push({ 
-        id: 'E' + Date.now(), 
-        name: fullName, 
-        type: type, 
-        scope: scopeName,
-        targetDept: dept,
-        targetClass: classId,
-        subjects: [...tempSubjects] 
+        id: 'E' + Date.now(), name: fullName, type: type, scope: scopeName,
+        targetDept: dept, targetClass: classId, subjects: [...tempSubjects] 
     });
 
     saveExamsToStorage();
@@ -564,11 +631,7 @@ function addStudentManual() {
     const seat = parseInt(document.getElementById('newStuSeat').value);
 
     if(!id || !name || !dept || !classId || isNaN(seat)) return alert('請完整填寫學生資料欄位！');
-
-    if(students.some(s => s.id === id)) {
-        alert('此學號已存在於名冊中！');
-        return;
-    }
+    if(students.some(s => s.id === id)) return alert('此學號已存在於名冊中！');
 
     students.push({ id, name, dept, classId, seat, scores: {} });
     saveStudentsToStorage();
@@ -615,17 +678,15 @@ function refreshExamSelect() {
     const selExam = document.getElementById('selExam');
     const savedValue = selExam.value;
     selExam.innerHTML = '<option value="">--請選擇考試--</option>' + exams.map(e => `<option value="${e.id}">${e.name} (${e.targetClass}班)</option>`).join('');
-    if(exams.some(e => e.id === savedValue)) {
-        selExam.value = savedValue;
-    } else {
-        initStudentSelect();
-    }
+    if(exams.some(e => e.id === savedValue)) { selExam.value = savedValue; } 
+    else { initStudentSelect(); }
 }
 
 function initStudentSelect() {
     const examId = document.getElementById('selExam').value;
     const selStudent = document.getElementById('selStudent');
     document.getElementById('dynamicScoreFields').style.display = 'none';
+    document.getElementById('earlyWarningPanel').style.display = 'none';
 
     if(!examId) {
         selStudent.innerHTML = '<option value="">--請選擇--</option>';
@@ -635,14 +696,99 @@ function initStudentSelect() {
     const exam = exams.find(e => e.id === examId);
     document.getElementById('currentExamNameTitle').textContent = exam.name + ` (${exam.targetClass}班)`;
 
-    let filteredStudents = students.filter(s => s.dept === exam.targetDept && s.classId === exam.targetClass);
+    // 解決型態不一致問題的過濾機制
+    let filteredStudents = students.filter(s => 
+        String(s.dept) === String(exam.targetDept) && 
+        String(s.classId) === String(exam.targetClass)
+    );
 
     if(filteredStudents.length === 0) {
-        selStudent.innerHTML = '<option value="">--該班級尚無學生，請先至學生管理區新增--</option>';
+        selStudent.innerHTML = '<option value="">--該班級尚無學生--</option>';
     } else {
-        selStudent.innerHTML = '<option value="">--請選擇學生--</option>' + filteredStudents.map(s => `${s.seat}號 - ${s.name}`).join('');
+        selStudent.innerHTML = '<option value="">--請選擇學生--</option>' + filteredStudents.map(s => `<option value="${s.id}">${s.seat}號 - ${s.name}</option>`).join('');
     }
     refreshScoreBoard();
+}
+
+// 整合登錄介面與提前預警更新的聯動函數
+function handleStudentSelectChange() {
+    renderSubjectScoreInputs();
+    renderEarlyWarning();
+}
+
+// 【新增功能】: 渲染提前預警診斷狀況
+function renderEarlyWarning() {
+    const examId = document.getElementById('selExam').value;
+    const studentId = document.getElementById('selStudent').value;
+    const warningPanel = document.getElementById('earlyWarningPanel');
+    const warningSummary = document.getElementById('warningSummary');
+    const tbody = document.querySelector('#warningDetailTable tbody');
+
+    if(!examId || !studentId) {
+        warningPanel.style.display = 'none';
+        return;
+    }
+
+    const exam = exams.find(e => e.id === examId);
+    const student = students.find(s => s.id === studentId);
+    const currentScores = student.scores[examId] || {};
+
+    let totalOriginal = 0;
+    let hasScore = false;
+    let failedSubjectsCount = 0;
+    let noReexamCount = 0; 
+
+    let tableHtml = exam.subjects.map(sub => {
+        const score = currentScores[sub.name];
+        let scoreText = "未到考";
+        let statusTag = `<span class="warning-status-tag status-fail">未輸入</span>`;
+        let advice = "請儘速補登分數。";
+
+        if(score !== undefined) {
+            hasScore = true;
+            totalOriginal += score;
+            scoreText = `${score} 分`;
+
+            if(score >= sub.pass) {
+                statusTag = `<span class="warning-status-tag status-pass">安全及格</span>`;
+                advice = "表現良好，順利取得學分。";
+            } else if(score >= 40) {
+                statusTag = `<span class="warning-status-tag status-reexam">具補考資格</span>`;
+                advice = "未達及格線，但允許參加學期補考，請加強複習。";
+                failedSubjectsCount++;
+            } else {
+                statusTag = `<span class="warning-status-tag status-fail">死當無法補考</span>`;
+                advice = "分數低於 40 分，依規定無法補考，將直接重補修。";
+                failedSubjectsCount++;
+                noReexamCount++;
+            }
+        }
+        return `<tr><td><strong>${sub.name}</strong></td><td>${scoreText}</td><td>${statusTag}</td><td>${advice}</td></tr>`;
+    }).join('');
+
+    tbody.innerHTML = tableHtml;
+
+    // 彙整摘要報告
+    let summaryHtml = `學生姓名：<strong>${student.name}</strong> ｜ 目前狀態：`;
+    if(!hasScore) {
+        summaryHtml += `<span style="color:#7f8c8d; font-weight:bold;">本次考試暫無分數紀錄</span>`;
+    } else {
+        summaryHtml += `<br>1. 原始總得分：<strong>${totalOriginal.toFixed(1)} 分</strong>`;
+        if(exam.type === "期末考" && totalOriginal < 180) {
+            summaryHtml += ` <span style="color:var(--danger); font-weight:bold;">(⚠️ 警報：未滿180分危險紅線！)</span>`;
+        }
+        summaryHtml += `<br>2. 診斷結果：目前共計 <strong>${failedSubjectsCount}</strong> 個科目未達及格標準。`;
+        if(noReexamCount > 0) {
+            summaryHtml += ` 其中有 <span style="color:var(--danger); font-weight:bold;">${noReexamCount} 科確定死當</span> 必須進行重補修。`;
+        } else if(failedSubjectsCount > 0) {
+            summaryHtml += ` 所幸皆落在 40~59 分，請通知學生務必參加補考。`;
+        } else {
+            summaryHtml += ` <span style="color:var(--success); font-weight:bold;">全部科目安全過關！</span>`;
+        }
+    }
+
+    warningSummary.innerHTML = summaryHtml;
+    warningPanel.style.display = 'block';
 }
 
 function renderSubjectScoreInputs() {
@@ -695,7 +841,7 @@ function saveQuickScores() {
     saveStudentsToStorage(); 
     alert('成績儲存成功！');
     refreshScoreBoard();
-    renderSubjectScoreInputs();
+    handleStudentSelectChange(); // 即時重繪預警區與輸入框
 }
 
 let currentDisplayedList = [];
@@ -712,12 +858,11 @@ function refreshScoreBoard() {
     }
 
     const exam = exams.find(e => e.id === examId);
-
     const prevExam = exams
         .filter(e => e.targetClass === exam.targetClass && e.id < exam.id)
         .sort((a, b) => b.id.localeCompare(a.id))[0];
 
-    let targetClassStudents = students.filter(s => s.classId === exam.targetClass);
+    let targetClassStudents = students.filter(s => String(s.classId) === String(exam.targetClass));
 
     targetClassStudents.forEach(s => {
         let originalTotal = 0;
@@ -889,9 +1034,7 @@ function openStudentDetailModal(studentId) {
     document.getElementById('studentDetailModal').style.display = 'flex';
 }
 
-function closeModal() {
-    document.getElementById('studentDetailModal').style.display = 'none';
-}
+function closeModal() { document.getElementById('studentDetailModal').style.display = 'none'; }
 
 function exportToExcel() {
     const examId = document.getElementById('selExam').value;
@@ -899,9 +1042,7 @@ function exportToExcel() {
     const exam = exams.find(e => e.id === examId);
 
     let headers = ["科系/班級", "座號", "學號", "姓名"];
-    exam.subjects.forEach(sub => {
-        headers.push(`${sub.name}(得分)`, `${sub.name}(單科名次)`);
-    });
+    exam.subjects.forEach(sub => { headers.push(`${sub.name}(得分)`, `${sub.name}(單科名次)`); });
     headers.push("原始總分", "加權總分", "平均分數", "校排", "科排", "班排");
 
     let excelRows = [headers];
