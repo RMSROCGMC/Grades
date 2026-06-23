@@ -729,7 +729,6 @@ function getAllConfiguredSubjects(year, semester, grade) {
         subjectSet.add("健康護理");
         subjectSet.add("國防教育");
     }
-    // 動態掃描已建立的考試，若有自訂科目也一併納入
     exams.forEach(e => {
         if(e.name.includes(`${year}學年度-${semester}-${grade}`)) {
             e.subjects.forEach(sub => subjectSet.add(sub.name));
@@ -770,7 +769,6 @@ function loadRegularScores() {
     const grade = document.getElementById('regGrade').value;
     const student = students.find(s => s.id === studentId);
 
-    // 取得所有考過與核心科目的完整清單
     const regSubjects = getAllConfiguredSubjects(year, semester, grade);
 
     if(!student.regularScores) student.regularScores = {};
@@ -820,7 +818,7 @@ function saveRegularScores() {
     alert(`[${student.name}] 的全科目平時成績已更新！已同步至排行預警系統。`);
 }
 
-// 核心整合排行與學分綜合預警模組
+// 排行與學分綜合預警模組
 function refreshExamSelect() {
     const selExam = document.getElementById('selExam');
     const savedValue = selExam.value;
@@ -861,21 +859,22 @@ function handleStudentSelectChange() {
     renderEarlyWarning();
 }
 
-// 核心精準計算：整合平時成績(40%)與三段考試(各20%)的學期預估分數
+// 核心精準計算：修正字串解析邏輯，完美整合平時與段考
 function calculateIntegratedSemesterScore(student, currentExam, subjectName) {
     const tokens = currentExam.name.split('-'); // [114學年度, 上學期, 一年級, 第一次月考]
     if(tokens.length < 4) return { total: 0, regScore: 0, examSum: 0, examCount: 0 };
 
-    const yearSemester = `${tokens[0]}-${tokens[1]}`;
-    const prefix = `${tokens[0]}-${tokens[1]}-${tokens[2]}-`;
+    // 關鍵修正：消除「學年度」字眼，精準對齊平時成績的 "114-上學期" Key
+    const pureYear = tokens[0].replace('學年度', ''); 
+    const yearSemester = `${pureYear}-${tokens[1]}`; 
+    
+    const prefix = `${tokens[0]}-${tokens[1]}-${tokens[2]}-`; 
     const examTypes = ["第一次月考", "第二次月考", "期末考"];
     
     // 1. 抓取平時成績 (佔 40%)
-    let regScore = 100; // 若老師完全未輸入，預設100或現狀滿分，此處防呆取實際輸入值，未填則當0分或不計，這裡採未填則當0分處理
+    let regScore = 0; 
     if(student.regularScores && student.regularScores[yearSemester] && student.regularScores[yearSemester][subjectName] !== undefined) {
         regScore = student.regularScores[yearSemester][subjectName];
-    } else {
-        regScore = 0; // 未填寫
     }
     
     // 2. 累計段考得分 (各次佔 20%)
@@ -925,7 +924,6 @@ function renderEarlyWarning() {
         let statusTag = `<span class="warning-status-tag status-info">學期階段推進中</span>`;
         let advice = `平時提供 ${(res.regScore*0.4).toFixed(1)}分，段考已考 ${res.examCount} 場提供 ${res.examSum.toFixed(1)}分。`;
 
-        // 三場段考皆齊全，進行終期生死結算
         if (res.examCount === 3) {
             if (res.total >= 60) {
                 statusTag = `<span class="warning-status-tag status-pass">安全過關</span>`;
@@ -940,13 +938,12 @@ function renderEarlyWarning() {
                 dangerSubjectsCount++;
             }
         } else {
-            // 階段推進中的動態提前預警
             const maxRemainingExams = 3 - res.examCount;
-            const maxPossibleFutureScore = res.total + (maxRemainingExams * 20); // 未來段考全拿滿分
+            const maxPossibleFutureScore = res.total + (maxRemainingExams * 20); 
             
             if (maxPossibleFutureScore < 60) {
                 statusTag = `<span class="warning-status-tag status-fail">極度危險</span>`;
-                advice = `目前累計僅 ${res.total.toFixed(1)} 分。即便後續段考拿滿分也無法及格！請立刻修正平時成績或加強輔導。`;
+                advice = `目前累計僅 ${res.total.toFixed(1)} 分。即便後續段考拿滿分也無法及格！請立刻修正平時成績。`;
                 dangerSubjectsCount++;
             } else if (res.total < (res.examCount === 1 ? 20 : 40)) {
                 statusTag = `<span class="warning-status-tag status-reexam">進度落後</span>`;
@@ -1043,7 +1040,6 @@ function refreshScoreBoard() {
 
     const exam = exams.find(e => e.id === examId);
     
-    // 找出前一場考試，做為進退步依據
     const prevExam = exams
         .filter(e => e.targetClass === exam.targetClass && e.id < exam.id)
         .sort((a, b) => b.id.localeCompare(a.id))[0];
@@ -1064,7 +1060,6 @@ function refreshScoreBoard() {
             }
         });
 
-        // 計算該生在所有科目中，學期整合預估分數的平均值
         let integratedSum = 0;
         exam.subjects.forEach(sub => {
             const res = calculateIntegratedSemesterScore(s, exam, sub.name);
@@ -1096,7 +1091,6 @@ function refreshScoreBoard() {
     let rankedGroup = targetClassStudents.filter(p => p._hasScore);
     let unrankedGroup = targetClassStudents.filter(p => !p._hasScore);
 
-    // 以當場段考加權總分進行排行
     rankedGroup.sort((a, b) => b._tempWeighted - a._tempWeighted);
 
     for(let i = 0; i < rankedGroup.length; i++) {
@@ -1113,7 +1107,6 @@ function refreshScoreBoard() {
 
     unrankedGroup.forEach(s => { s.schoolRank = '-'; s.deptRank = '-'; s.classRank = '-'; });
 
-    // 單科名次處理
     exam.subjects.forEach(sub => {
         let subRankList = targetClassStudents.filter(s => s.scores[examId] && s.scores[examId][sub.name] !== undefined);
         subRankList.sort((a, b) => b.scores[examId][sub.name] - a.scores[examId][sub.name]);
