@@ -22,7 +22,6 @@
             color: #333;
         }
         
-        /* 導覽列與全新漢堡選單樣式 */
         header {
             background-color: var(--primary);
             color: white;
@@ -35,11 +34,7 @@
         }
         header h2 { margin: 0; font-size: 20px; }
 
-        /* 桌機版導覽列 */
-        nav {
-            display: flex;
-            gap: 10px;
-        }
+        nav { display: flex; gap: 10px; }
         nav button {
             background: none;
             border: 1px solid white;
@@ -56,7 +51,6 @@
             font-weight: bold;
         }
 
-        /* 漢堡按鈕圖示 (三條線) */
         .hamburger {
             display: none;
             flex-direction: column;
@@ -75,7 +69,6 @@
             transition: all 0.3s ease;
         }
 
-        /* 預警功能特定樣式 */
         .warning-box {
             background: #fff5f5;
             border-left: 5px solid var(--danger);
@@ -94,7 +87,6 @@
         .status-reexam { background-color: #f39c12; }
         .status-fail { background-color: var(--danger); }
 
-        /* 主容器與SPA頁面結構 */
         .container {
             max-width: 950px;
             margin: 10px auto;
@@ -229,7 +221,6 @@
             font-size: 14px; display: flex; align-items: center; gap: 5px;
         }
 
-        /* 手機行動端 RWD 漢堡選單回應式佈局 */
         @media (max-width: 768px) {
             .hamburger { display: flex; }
             nav {
@@ -278,7 +269,7 @@
         <h3>Step 1: 確認考試基本資訊</h3>
         <div class="grid-selects">
             <div class="form-group">
-                <label>學年度（含未來3年選擇）</label>
+                <label>學年度</label>
                 <select id="examYear">
                     <option value="114">114 學年度</option>
                     <option value="115">115 學年度</option>
@@ -294,7 +285,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>適用年級（切換時將聯動變更班級代號）</label>
+                <label>適用年級</label>
                 <select id="examGrade" onchange="handleGradeChange()">
                     <option value="一年級">一年級</option>
                     <option value="二年級">二年級</option>
@@ -302,7 +293,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>考試別（將自動載入對應考科）</label>
+                <label>考試別</label>
                 <select id="examType" onchange="autoLoadSubjects()">
                     <option value="第一次月考">第一次月考</option>
                     <option value="第二次月考">第二次月考</option>
@@ -314,7 +305,7 @@
                 <input type="text" id="examDept" value="電子科" readonly style="background:#eee;">
             </div>
             <div class="form-group">
-                <label>適用班別（跟隨年級自動聯動）</label>
+                <label>適用班別</label>
                 <input type="text" id="examClass" value="102" readonly style="background:#eef7ff; font-weight: bold; color: var(--primary);">
             </div>
         </div>
@@ -407,12 +398,12 @@
             </div>
 
             <div id="earlyWarningPanel" style="display:none;" class="warning-box">
-                <h4 style="margin:0 0 10px 0; color:var(--primary);">提前預警詳細診斷狀態</h4>
+                <h4 style="margin:0 0 10px 0; color:var(--primary);">學期累計進度與提前預警診斷</h4>
                 <div id="warningSummary" style="font-size:14px; margin-bottom:10px; line-height:1.5;"></div>
                 <div class="table-responsive">
                     <table style="min-width:100%; background:white;" id="warningDetailTable">
                         <thead>
-                            <tr><th>學科</th><th>目前得分</th><th>學分狀態評估</th><th>輔導建議</th></tr>
+                            <tr><th>學科</th><th>目前三次累計值 (各科x0.2)</th><th>學分預警狀態</th><th>學期輔導建議</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -420,7 +411,7 @@
             </div>
 
             <div id="dynamicScoreFields" style="margin-top: 15px; display: none; background: white; padding: 15px; border-radius: 6px; border:1px solid #ddd;">
-                <h4 style="margin-top: 0; color: var(--primary);">分數填寫與修改：</h4>
+                <h4 style="margin-top: 0; color: var(--primary);">本場單獨分數填寫與修改：</h4>
                 <div id="fieldsContainer"></div>
                 <button class="btn" style="background-color: #2ecc71; margin-top: 15px;" onclick="saveQuickScores()">寫入並更新動態排行</button>
             </div>
@@ -430,13 +421,13 @@
             <h3 style="margin:0;">總體動態排行榜 (<span id="currentExamNameTitle">未選擇考試</span>)</h3>
             <button class="btn-excel" onclick="exportToExcel()">匯出 Excel (.xlsx)</button>
         </div>
-        <div style="font-size: 12px; color: #e74c3c; margin-bottom: 5px;">* 註：若為期末考，原始總分未滿 180 分者將自動顯示紅字預警背景。</div>
+        <div style="font-size: 12px; color: #e74c3c; margin-bottom: 5px;">* 註：原始總分欄位已更換為「學期階段累計進度 (各考科得分均已x0.2)」。若期末全部考完且累計未滿 36 分者將亮紅字警報。</div>
         <div class="table-responsive">
             <table id="scoreManagerTable">
                 <thead>
                     <tr>
                         <th>科系/班級</th><th>座號</th><th>學號</th><th>姓名</th>
-                        <th>原始總分</th><th>加權總分</th><th>平均分數</th>
+                        <th>學期累計分(x0.2)</th><th>當場加權總分</th><th>當場平均分數</th>
                         <th>校排</th><th>科排</th><th>班排</th><th>進退步</th>
                     </tr>
                 </thead>
@@ -456,7 +447,7 @@
         <div class="table-responsive">
             <table id="modalSubjectRankTable">
                 <thead>
-                    <tr><th>學科</th><th>得分</th><th>加權值</th><th>及格標準</th><th>單科排名</th><th>結果</th></tr>
+                    <tr><th>學科</th><th>當場得分</th><th>加權值</th><th>及格標準</th><th>單科排名</th><th>結果</th></tr>
                 </thead>
                 <tbody></tbody>
             </table>
@@ -499,10 +490,7 @@ window.onload = function() {
     handleGradeChange();
 };
 
-function toggleMenu() {
-    document.getElementById('navMenu').classList.toggle('open');
-}
-
+function toggleMenu() { document.getElementById('navMenu').classList.toggle('open'); }
 function saveExamsToStorage() { localStorage.setItem('rms_exams', JSON.stringify(exams)); }
 function saveStudentsToStorage() { localStorage.setItem('rms_students', JSON.stringify(students)); }
 
@@ -511,7 +499,7 @@ function switchPage(pageId) {
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     document.getElementById('btn-' + pageId).classList.add('active');
-    document.getElementById('navMenu').classList.remove('open'); // 點擊後自動收起漢堡選單
+    document.getElementById('navMenu').classList.remove('open');
 
     if(pageId === 'scorePage') { refreshExamSelect(); }
 }
@@ -595,7 +583,7 @@ function createExam() {
 
     saveExamsToStorage();
     updateExamUI();
-    alert(`考試創建成功！班別連動為：${classId}班，已永久儲存於本機。`);
+    alert(`考試創建成功！班別連動為：${classId}班`);
     switchPage('examListPage');
 }
 
@@ -696,7 +684,6 @@ function initStudentSelect() {
     const exam = exams.find(e => e.id === examId);
     document.getElementById('currentExamNameTitle').textContent = exam.name + ` (${exam.targetClass}班)`;
 
-    // 解決型態不一致問題的過濾機制
     let filteredStudents = students.filter(s => 
         String(s.dept) === String(exam.targetDept) && 
         String(s.classId) === String(exam.targetClass)
@@ -710,13 +697,37 @@ function initStudentSelect() {
     refreshScoreBoard();
 }
 
-// 整合登錄介面與提前預警更新的聯動函數
 function handleStudentSelectChange() {
     renderSubjectScoreInputs();
     renderEarlyWarning();
 }
 
-// 【新增功能】: 渲染提前預警診斷狀況
+// 【核心改造】計算該學生的三次考試跨欄位累計分 (x0.2)
+function calculateSemesterAccumulated(student, currentExam, subjectName) {
+    const tokens = currentExam.name.split('-'); // e.g. ["114學年度", "下學期", "一年級", "第二次月考"]
+    if(tokens.length < 4) return { val: 0, count: 0 };
+
+    const prefix = `${tokens[0]}-${tokens[1]}-${tokens[2]}-`;
+    const targetExamTypes = ["第一次月考", "第二次月考", "期末考"];
+    
+    let totalScoreForSub = 0;
+    let examCount = 0;
+
+    targetExamTypes.forEach(type => {
+        const fullExamName = prefix + type;
+        const matchedExam = exams.find(e => e.name === fullExamName && String(e.targetClass) === String(currentExam.targetClass));
+        if(matchedExam) {
+            const scoreRecord = student.scores[matchedExam.id] || {};
+            if(scoreRecord[subjectName] !== undefined) {
+                totalScoreForSub += scoreRecord[subjectName] * 0.2;
+                examCount++;
+            }
+        }
+    });
+    return { val: totalScoreForSub, count: examCount };
+}
+
+// 【全新提前預警診斷】依據 x0.2 進度隨時看
 function renderEarlyWarning() {
     const examId = document.getElementById('selExam').value;
     const studentId = document.getElementById('selStudent').value;
@@ -731,59 +742,63 @@ function renderEarlyWarning() {
 
     const exam = exams.find(e => e.id === examId);
     const student = students.find(s => s.id === studentId);
-    const currentScores = student.scores[examId] || {};
 
-    let totalOriginal = 0;
-    let hasScore = false;
+    let semesterTotalAccumulated = 0;
+    let anyExamRecorded = false;
     let failedSubjectsCount = 0;
-    let noReexamCount = 0; 
 
     let tableHtml = exam.subjects.map(sub => {
-        const score = currentScores[sub.name];
-        let scoreText = "未到考";
-        let statusTag = `<span class="warning-status-tag status-fail">未輸入</span>`;
-        let advice = "請儘速補登分數。";
+        const accumData = calculateSemesterAccumulated(student, exam, sub.name);
+        if(accumData.count > 0) anyExamRecorded = true;
 
-        if(score !== undefined) {
-            hasScore = true;
-            totalOriginal += score;
-            scoreText = `${score} 分`;
+        semesterTotalAccumulated += accumData.val;
 
-            if(score >= sub.pass) {
-                statusTag = `<span class="warning-status-tag status-pass">安全及格</span>`;
-                advice = "表現良好，順利取得學分。";
-            } else if(score >= 40) {
-                statusTag = `<span class="warning-status-tag status-reexam">具補考資格</span>`;
-                advice = "未達及格線，但允許參加學期補考，請加強複習。";
+        // 單科滿分 100 乘以 0.2 佔 20 分。三次全部滿分為 60 分（及格線為 36 分）
+        // 在只有一或兩次考試時，做進度推估預警
+        let statusTag = `<span class="warning-status-tag status-reexam">累計進度中</span>`;
+        let advice = `目前已考 ${accumData.count} 場，該科累計取得 ${accumData.val.toFixed(1)} 分。`;
+
+        // 如果期末考也考完了，進入終極判定
+        if (accumData.count === 3) {
+            if (accumData.val >= 36) {
+                statusTag = `<span class="warning-status-tag status-pass">安全取得學分</span>`;
+                advice = `終期累計總分達 ${accumData.val.toFixed(1)} (>=36)，確定拿到學分！`;
+            } else if (accumData.val >= 24) {
+                statusTag = `<span class="warning-status-tag status-reexam">需補考</span>`;
+                advice = `累計分數為 ${accumData.val.toFixed(1)} 分，落入 24~35.9 區間，必須參加補考。`;
                 failedSubjectsCount++;
             } else {
-                statusTag = `<span class="warning-status-tag status-fail">死當無法補考</span>`;
-                advice = "分數低於 40 分，依規定無法補考，將直接重補修。";
+                statusTag = `<span class="warning-status-tag status-fail">直接死當</span>`;
+                advice = `累計分數低於 24 分（相當於學期平均低於40），無法補考，直接重補修。`;
                 failedSubjectsCount++;
-                noReexamCount++;
+            }
+        } else {
+            // 提前推估：單科目前累計進度如果太低做提示
+            if(accumData.count === 2 && accumData.val < 16) {
+                statusTag = `<span class="warning-status-tag status-fail">進度落後</span>`;
+                advice = `前兩次累計僅 ${accumData.val.toFixed(1)} 分，期末考必須考到大於 ${(36 - accumData.val) / 0.2} 分才能及格！`;
             }
         }
-        return `<tr><td><strong>${sub.name}</strong></td><td>${scoreText}</td><td>${statusTag}</td><td>${advice}</td></tr>`;
+
+        return `<tr><td><strong>${sub.name}</strong></td><td><strong>${accumData.val.toFixed(1)} 分</strong> (已考 ${accumData.count}/3 場)</td><td>${statusTag}</td><td>${advice}</td></tr>`;
     }).join('');
 
     tbody.innerHTML = tableHtml;
 
-    // 彙整摘要報告
-    let summaryHtml = `學生姓名：<strong>${student.name}</strong> ｜ 目前狀態：`;
-    if(!hasScore) {
-        summaryHtml += `<span style="color:#7f8c8d; font-weight:bold;">本次考試暫無分數紀錄</span>`;
+    let summaryHtml = `學生姓名：<strong>${student.name}</strong> ｜ 目前學期三段累計狀態：`;
+    if(!anyExamRecorded) {
+        summaryHtml += `<span style="color:#7f8c8d; font-weight:bold;">尚無任何考試進度。</span>`;
     } else {
-        summaryHtml += `<br>1. 原始總得分：<strong>${totalOriginal.toFixed(1)} 分</strong>`;
-        if(exam.type === "期末考" && totalOriginal < 180) {
-            summaryHtml += ` <span style="color:var(--danger); font-weight:bold;">(⚠️ 警報：未滿180分危險紅線！)</span>`;
+        summaryHtml += `<br>1. 全科目學期總累計得分（均已x0.2）：<strong style="color:#2980b9; font-size:16px;">${semesterTotalAccumulated.toFixed(1)} 分</strong>`;
+        
+        // 若為期末考且總和未滿180折算進度 (180 * 0.2 = 36)
+        if(semesterTotalAccumulated < 36) {
+            summaryHtml += ` <span style="color:var(--danger); font-weight:bold;">(⚠️ 目前進度低於 36 分及格危險紅線)</span>`;
         }
-        summaryHtml += `<br>2. 診斷結果：目前共計 <strong>${failedSubjectsCount}</strong> 個科目未達及格標準。`;
-        if(noReexamCount > 0) {
-            summaryHtml += ` 其中有 <span style="color:var(--danger); font-weight:bold;">${noReexamCount} 科確定死當</span> 必須進行重補修。`;
-        } else if(failedSubjectsCount > 0) {
-            summaryHtml += ` 所幸皆落在 40~59 分，請通知學生務必參加補考。`;
+        if(failedSubjectsCount > 0) {
+            summaryHtml += `<br>2. 警告：共有 <strong>${failedSubjectsCount}</strong> 個科目在期末結算後未能順利過關。`;
         } else {
-            summaryHtml += ` <span style="color:var(--success); font-weight:bold;">全部科目安全過關！</span>`;
+            summaryHtml += `<br>2. 狀態：隨時監控中。請利用下方列表觀察各別科目的推估進度。`;
         }
     }
 
@@ -797,10 +812,7 @@ function renderSubjectScoreInputs() {
     const panel = document.getElementById('dynamicScoreFields');
     const container = document.getElementById('fieldsContainer');
 
-    if(!examId || !studentId) {
-        panel.style.display = 'none';
-        return;
-    }
+    if(!examId || !studentId) { panel.style.display = 'none'; return; }
 
     const exam = exams.find(e => e.id === examId);
     const student = students.find(s => s.id === studentId);
@@ -831,17 +843,14 @@ function saveQuickScores() {
     inputs.forEach(input => {
         const subName = input.getAttribute('data-subname');
         const val = input.value.trim();
-        if(val !== "") {
-            student.scores[examId][subName] = parseFloat(val);
-        } else {
-            delete student.scores[examId][subName];
-        }
+        if(val !== "") { student.scores[examId][subName] = parseFloat(val); } 
+        else { delete student.scores[examId][subName]; }
     });
 
     saveStudentsToStorage(); 
-    alert('成績儲存成功！');
+    alert('本場成績登記成功！已重新計算跨月考累計進度。');
     refreshScoreBoard();
-    handleStudentSelectChange(); // 即時重繪預警區與輸入框
+    handleStudentSelectChange();
 }
 
 let currentDisplayedList = [];
@@ -865,7 +874,6 @@ function refreshScoreBoard() {
     let targetClassStudents = students.filter(s => String(s.classId) === String(exam.targetClass));
 
     targetClassStudents.forEach(s => {
-        let originalTotal = 0;
         let weightedTotal = 0;
         let activeWeightsSum = 0; 
         let hasScore = false;
@@ -873,14 +881,20 @@ function refreshScoreBoard() {
 
         exam.subjects.forEach(sub => {
             if(record[sub.name] !== undefined) {
-                originalTotal += record[sub.name];
                 weightedTotal += record[sub.name] * sub.weight;
                 activeWeightsSum += sub.weight;
                 hasScore = true;
             }
         });
 
-        s._tempOriginal = hasScore ? originalTotal : 0;
+        // 核心改造：計算跨考試之全考科 x0.2 的總累計進度
+        let currentTotalAccumulated = 0;
+        exam.subjects.forEach(sub => {
+            const accumData = calculateSemesterAccumulated(s, exam, sub.name);
+            currentTotalAccumulated += accumData.val;
+        });
+
+        s._semesterAccumulatedTotal = currentTotalAccumulated;
         s._tempWeighted = hasScore ? weightedTotal : 0;
         s._tempAvg = (hasScore && activeWeightsSum > 0) ? (weightedTotal / activeWeightsSum) : 0; 
         s._hasScore = hasScore;
@@ -918,9 +932,7 @@ function refreshScoreBoard() {
         }
     }
 
-    unrankedGroup.forEach(s => {
-        s.schoolRank = '-'; s.deptRank = '-'; s.classRank = '-';
-    });
+    unrankedGroup.forEach(s => { s.schoolRank = '-'; s.deptRank = '-'; s.classRank = '-'; });
 
     exam.subjects.forEach(sub => {
         let subRankList = targetClassStudents.filter(s => s.scores[examId] && s.scores[examId][sub.name] !== undefined);
@@ -932,9 +944,7 @@ function refreshScoreBoard() {
             let currentScore = subRankList[i].scores[examId][sub.name];
             if (i > 0) {
                 let prevScore = subRankList[i-1].scores[examId][sub.name];
-                if (currentScore !== prevScore) {
-                    currentRank = i + 1;
-                }
+                if (currentScore !== prevScore) { currentRank = i + 1; }
             }
             rankMap[subRankList[i].id] = currentRank;
         }
@@ -943,9 +953,7 @@ function refreshScoreBoard() {
             if(!s._subRanks) s._subRanks = {};
             if(s.scores[examId] && s.scores[examId][sub.name] !== undefined) {
                 s._subRanks[sub.name] = rankMap[s.id];
-            } else {
-                s._subRanks[sub.name] = '-';
-            }
+            } else { s._subRanks[sub.name] = '-'; }
         });
     });
 
@@ -965,9 +973,10 @@ function refreshScoreBoard() {
             else progressText = "持平";
         }
 
-        let originalTotalDisplay = s._hasScore ? s._tempOriginal.toFixed(1) : '-';
-        if(exam.type === "期末考" && s._hasScore && s._tempOriginal < 180) {
-            originalTotalDisplay = `<span class="alert-under-180">${s._tempOriginal.toFixed(1)} (未滿180)</span>`;
+        // 修改輸出：原原始總分欄位更換為學期累計分。若低於36做視覺提示
+        let accumDisplay = s._semesterAccumulatedTotal.toFixed(1);
+        if(s._semesterAccumulatedTotal < 36) {
+            accumDisplay = `<span class="alert-under-180">${s._semesterAccumulatedTotal.toFixed(1)} (未滿36)</span>`;
         }
 
         return `
@@ -976,7 +985,7 @@ function refreshScoreBoard() {
                 <td>${s.seat}號</td>
                 <td>${s.id}</td>
                 <td><span class="clickable-name" onclick="openStudentDetailModal('${s.id}')">${s.name}</span></td>
-                <td>${originalTotalDisplay}</td>
+                <td>${accumDisplay}</td>
                 <td><strong>${s._hasScore ? s._tempWeighted.toFixed(1) : '-'}</strong></td>
                 <td>${s._hasScore ? s._tempAvg.toFixed(1) : '-'}</td>
                 <td><span class="badge" style="background:#34495e">${s.schoolRank}</span></td>
@@ -997,15 +1006,15 @@ function openStudentDetailModal(studentId) {
     const currentScores = student.scores[examId] || {};
 
     let alertNotice = "";
-    if(exam.type === "期末考" && student._tempOriginal < 180 && student._hasScore) {
-        alertNotice = `<br><span style="color:var(--danger); font-weight:bold;">警告：期末考未加權總分未達 180 分標準！</span>`;
+    if(student._semesterAccumulatedTotal < 36) {
+        alertNotice = `<br><span style="color:var(--danger); font-weight:bold;">警告：學期總累計分處於 36 分及格線以下！</span>`;
     }
 
     document.getElementById('modalStudentTitle').textContent = `${student.name} 的表現檔案`;
     document.getElementById('modalInfoArea').innerHTML = `
         科系班級：<strong>${student.dept} / ${student.classId}</strong> ｜ 座號：<strong>${student.seat} 號</strong><br>
         本次考試：<strong>${exam.name}</strong> ｜ 
-        加權班排：<span style="color:#d35400; font-weight:bold;">第 ${student.classRank || '-'} 名</span>${alertNotice}
+        當場班排：<span style="color:#d35400; font-weight:bold;">第 ${student.classRank || '-'} 名</span>${alertNotice}
     `;
 
     const modalTbody = document.querySelector('#modalSubjectRankTable tbody');
@@ -1042,8 +1051,8 @@ function exportToExcel() {
     const exam = exams.find(e => e.id === examId);
 
     let headers = ["科系/班級", "座號", "學號", "姓名"];
-    exam.subjects.forEach(sub => { headers.push(`${sub.name}(得分)`, `${sub.name}(單科名次)`); });
-    headers.push("原始總分", "加權總分", "平均分數", "校排", "科排", "班排");
+    exam.subjects.forEach(sub => { headers.push(`${sub.name}(當場得分)`, `${sub.name}(單科名次)`); });
+    headers.push("學期累計總分(x0.2)", "當場加權總分", "當場平均分數", "校排", "科排", "班排");
 
     let excelRows = [headers];
     currentDisplayedList.forEach(s => {
@@ -1052,16 +1061,11 @@ function exportToExcel() {
         exam.subjects.forEach(sub => {
             if(s._hasScore && record[sub.name] !== undefined) {
                 row.push(record[sub.name], s._subRanks[sub.name] || "-");
-            } else {
-                row.push("-", "-");
-            }
+            } else { row.push("-", "-"); }
         });
-        if(s._hasScore) {
-            let warnSuffix = (exam.type === "期末考" && s._tempOriginal < 180) ? " (未滿180)" : "";
-            row.push(s._tempOriginal.toFixed(1) + warnSuffix, s._tempWeighted.toFixed(1), s._tempAvg.toFixed(1), s.schoolRank, s.deptRank, s.classRank);
-        } else {
-            row.push("-", "-", "-", "-", "-", "-");
-        }
+        
+        let warnSuffix = (s._semesterAccumulatedTotal < 36) ? " (未滿36)" : "";
+        row.push(s._semesterAccumulatedTotal.toFixed(1) + warnSuffix, s._tempWeighted.toFixed(1), s._tempAvg.toFixed(1), s.schoolRank, s.deptRank, s.classRank);
         excelRows.push(row);
     });
 
