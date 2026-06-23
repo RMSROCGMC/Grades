@@ -258,6 +258,7 @@
         <button onclick="switchPage('examPage')" id="btn-examPage" class="active">考試設定</button>
         <button onclick="switchPage('examListPage')" id="btn-examListPage">考試列表</button>
         <button onclick="switchPage('studentPage')" id="btn-studentPage">學生管理</button>
+        <button onclick="switchPage('regularScorePage')" id="btn-regularScorePage">平時成績</button>
         <button onclick="switchPage('scorePage')" id="btn-scorePage">成績總管</button>
     </nav>
 </header>
@@ -381,6 +382,49 @@
         </div>
     </div>
 
+    <div id="regularScorePage" class="page">
+        <h2 class="page-title">學期平時成績登記</h2>
+        <div class="score-entry-panel" style="background: #ebf5fb; border-left-color: #2980b9;">
+            <h3>篩選條件與學生選取</h3>
+            <div class="grid-selects" style="background:none; border:none; padding:0; margin-bottom:10px;">
+                <div class="form-group">
+                    <label>學年度</label>
+                    <select id="regYear" onchange="refreshRegStudents()">
+                        <option value="114">114 學年度</option>
+                        <option value="115">115 學年度</option>
+                        <option value="116">116 學年度</option>
+                        <option value="117">117 學年度</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>學期</label>
+                    <select id="regSemester" onchange="refreshRegStudents()">
+                        <option value="上學期">上學期</option>
+                        <option value="下學期">下學期</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>適用年級 (連動班級)</label>
+                    <select id="regGrade" onchange="refreshRegStudents()">
+                        <option value="一年級">一年級 (102班)</option>
+                        <option value="二年級">二年級 (202班)</option>
+                        <option value="三年級">三年級 (302班)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>選取學生</label>
+                    <select id="regStudent" onchange="loadRegularScores()"><option value="">--請選擇學生--</option></select>
+                </div>
+            </div>
+
+            <div id="regularFieldsPanel" style="display:none; background:white; padding:15px; border-radius:6px; border:1px solid #b9cde5; margin-top:15px;">
+                <h4 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:5px;">該生平時成績輸入欄位：</h4>
+                <div id="regularFieldsContainer"></div>
+                <button class="btn" style="background-color: #2980b9; margin-top:15px;" onclick="saveRegularScores()">儲存平時成績</button>
+            </div>
+        </div>
+    </div>
+
     <div id="scorePage" class="page">
         <h2 class="page-title">成績總管中心</h2>
 
@@ -456,16 +500,17 @@
 </div>
 
 <script>
+// 基礎核心資料結構
 const defaultStudents = [
-    { id: "410201", name: "王冠能", dept: "電子科", classId: "102", seat: 1, scores: {} },
-    { id: "410202", name: "李育寰", dept: "電子科", classId: "102", seat: 2, scores: {} },
-    { id: "410203", name: "洪駿煜", dept: "電子科", classId: "102", seat: 3, scores: {} },
-    { id: "410204", name: "孫宸翰", dept: "電子科", classId: "102", seat: 4, scores: {} },
-    { id: "410205", name: "張永旭", dept: "電子科", classId: "102", seat: 5, scores: {} },
-    { id: "410206", name: "楊鴻蔚", dept: "電子科", classId: "102", seat: 6, scores: {} },
-    { id: "410207", name: "廖懷恩", dept: "電子科", classId: "102", seat: 7, scores: {} },
-    { id: "410208", name: "蔡文豪", dept: "電子科", classId: "102", seat: 8, scores: {} },
-    { id: "410209", name: "黎聖欽", dept: "電子科", classId: "102", seat: 9, scores: {} }
+    { id: "410201", name: "王冠能", dept: "電子科", classId: "102", seat: 1, scores: {}, regularScores: {} },
+    { id: "410202", name: "李育寰", dept: "電子科", classId: "102", seat: 2, scores: {}, regularScores: {} },
+    { id: "410203", name: "洪駿煜", dept: "電子科", classId: "102", seat: 3, scores: {}, regularScores: {} },
+    { id: "410204", name: "孫宸翰", dept: "電子科", classId: "102", seat: 4, scores: {}, regularScores: {} },
+    { id: "410205", name: "張永旭", dept: "電子科", classId: "102", seat: 5, scores: {}, regularScores: {} },
+    { id: "410206", name: "楊鴻蔚", dept: "電子科", classId: "102", seat: 6, scores: {}, regularScores: {} },
+    { id: "410207", name: "廖懷恩", dept: "電子科", classId: "102", seat: 7, scores: {}, regularScores: {} },
+    { id: "410208", name: "蔡文豪", dept: "電子科", classId: "102", seat: 8, scores: {}, regularScores: {} },
+    { id: "410209", name: "黎聖欽", dept: "電子科", classId: "102", seat: 9, scores: {}, regularScores: {} }
 ];
 
 let students = [];
@@ -488,6 +533,7 @@ window.onload = function() {
     updateStudentTable();
     updateExamUI();
     handleGradeChange();
+    refreshRegStudents();
 };
 
 function toggleMenu() { document.getElementById('navMenu').classList.toggle('open'); }
@@ -502,6 +548,7 @@ function switchPage(pageId) {
     document.getElementById('navMenu').classList.remove('open');
 
     if(pageId === 'scorePage') { refreshExamSelect(); }
+    if(pageId === 'regularScorePage') { refreshRegStudents(); }
 }
 
 function handleGradeChange() {
@@ -512,6 +559,7 @@ function handleGradeChange() {
     else if (grade === "三年級") classInput.value = "302";
 }
 
+// 根據考科別快速初始化預設科目
 function autoLoadSubjects() {
     const type = document.getElementById('examType').value;
     const baseSubjects = [
@@ -621,7 +669,7 @@ function addStudentManual() {
     if(!id || !name || !dept || !classId || isNaN(seat)) return alert('請完整填寫學生資料欄位！');
     if(students.some(s => s.id === id)) return alert('此學號已存在於名冊中！');
 
-    students.push({ id, name, dept, classId, seat, scores: {} });
+    students.push({ id, name, dept, classId, seat, scores: {}, regularScores: {} });
     saveStudentsToStorage();
     updateStudentTable();
 
@@ -662,6 +710,95 @@ function updateStudentTable() {
     `).join('');
 }
 
+// 【平時成績專屬邏輯區】
+function refreshRegStudents() {
+    const grade = document.getElementById('regGrade').value;
+    const regStudentSelect = document.getElementById('regStudent');
+    document.getElementById('regularFieldsPanel').style.display = 'none';
+
+    let targetClass = "102";
+    if(grade === "二年級") targetClass = "202";
+    if(grade === "三年級") targetClass = "302";
+
+    let filtered = students.filter(s => String(s.classId) === targetClass);
+
+    if(filtered.length === 0) {
+        regStudentSelect.innerHTML = '<option value="">--該班級尚無學生--</option>';
+    } else {
+        regStudentSelect.innerHTML = '<option value="">--請選擇學生--</option>' + 
+            filtered.map(s => `<option value="${s.id}">${s.seat}號 - ${s.name}</option>`).join('');
+    }
+}
+
+function loadRegularScores() {
+    const studentId = document.getElementById('regStudent').value;
+    const panel = document.getElementById('regularFieldsPanel');
+    const container = document.getElementById('regularFieldsContainer');
+
+    if(!studentId) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    const year = document.getElementById('regYear').value;
+    const semester = document.getElementById('regSemester').value;
+    const grade = document.getElementById('regGrade').value;
+    const student = students.find(s => s.id === studentId);
+
+    // 平時成績核心動態考科清單
+    let regSubjects = ["國文", "英文", "數學", "物理", "基本電學"];
+    if (grade !== "一年級") {
+        regSubjects.push("健康護理", "國防教育");
+    }
+
+    // 初始化儲存結構
+    if(!student.regularScores) student.regularScores = {};
+    const key = `${year}-${semester}`;
+    if(!student.regularScores[key]) student.regularScores[key] = {};
+
+    const currentSaved = student.regularScores[key];
+
+    container.innerHTML = regSubjects.map(subName => {
+        const scoreVal = currentSaved[subName] !== undefined ? currentSaved[subName] : "";
+        return `
+            <div style="margin-bottom:10px; display:flex; align-items:center; gap:15px;">
+                <span style="width:140px; font-weight:bold; font-size:15px; color:var(--primary);">${subName} 平時成績:</span>
+                <input type="number" class="reg-score-input" data-subname="${subName}" value="${scoreVal}" max="100" min="0" placeholder="請輸入分數">
+            </div>
+        `;
+    }).join('');
+
+    panel.style.display = 'block';
+}
+
+function saveRegularScores() {
+    const studentId = document.getElementById('regStudent').value;
+    if(!studentId) return;
+
+    const year = document.getElementById('regYear').value;
+    const semester = document.getElementById('regSemester').value;
+    const student = students.find(s => s.id === studentId);
+
+    const key = `${year}-${semester}`;
+    if(!student.regularScores) student.regularScores = {};
+    if(!student.regularScores[key]) student.regularScores[key] = {};
+
+    const inputs = document.querySelectorAll('.reg-score-input');
+    inputs.forEach(input => {
+        const subName = input.getAttribute('data-subname');
+        const val = input.value.trim();
+        if(val !== "") {
+            student.regularScores[key][subName] = parseFloat(val);
+        } else {
+            delete student.regularScores[key][subName];
+        }
+    });
+
+    saveStudentsToStorage();
+    alert(`[${student.name}] 的 ${year}學年度 ${semester} 平時成績儲存完畢！`);
+}
+
+// 【月考/期末考 排行中心邏輯區】
 function refreshExamSelect() {
     const selExam = document.getElementById('selExam');
     const savedValue = selExam.value;
