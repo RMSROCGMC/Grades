@@ -442,12 +442,12 @@
             </div>
 
             <div id="earlyWarningPanel" style="display:none;" class="warning-box">
-                <h4 style="margin:0 0 10px 0; color:var(--primary);">學期累計進度與提前預警診斷</h4>
+                <h4 style="margin:0 0 10px 0; color:var(--primary);">學期累計進度與提前預警診斷 (含平時成績)</h4>
                 <div id="warningSummary" style="font-size:14px; margin-bottom:10px; line-height:1.5;"></div>
                 <div class="table-responsive">
                     <table style="min-width:100%; background:white;" id="warningDetailTable">
                         <thead>
-                            <tr><th>學科</th><th>目前三次累計值 (各科x0.2)</th><th>學分預警狀態</th><th>學期輔導建議</th></tr>
+                            <tr><th>學科</th><th>段考累計值 (各科x0.2)</th><th>常態平時成績</th><th>綜合學分預警狀態</th><th>學期輔導建議</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -559,7 +559,6 @@ function handleGradeChange() {
     else if (grade === "三年級") classInput.value = "302";
 }
 
-// 根據考科別快速初始化預設科目
 function autoLoadSubjects() {
     const type = document.getElementById('examType').value;
     const baseSubjects = [
@@ -638,7 +637,7 @@ function createExam() {
 function updateExamUI() {
     const tbody = document.querySelector('#examTable tbody');
     if(exams.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color:#aaa;">目前尚無考試資料。</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#aaa;">目尚無考試資料。</td></tr>`;
         return;
     }
     tbody.innerHTML = exams.map((e, idx) => `
@@ -710,7 +709,7 @@ function updateStudentTable() {
     `).join('');
 }
 
-// 【平時成績專屬邏輯區】
+// 平時成績核心業務邏輯
 function refreshRegStudents() {
     const grade = document.getElementById('regGrade').value;
     const regStudentSelect = document.getElementById('regStudent');
@@ -745,13 +744,11 @@ function loadRegularScores() {
     const grade = document.getElementById('regGrade').value;
     const student = students.find(s => s.id === studentId);
 
-    // 平時成績核心動態考科清單
     let regSubjects = ["國文", "英文", "數學", "物理", "基本電學"];
     if (grade !== "一年級") {
         regSubjects.push("健康護理", "國防教育");
     }
 
-    // 初始化儲存結構
     if(!student.regularScores) student.regularScores = {};
     const key = `${year}-${semester}`;
     if(!student.regularScores[key]) student.regularScores[key] = {};
@@ -798,7 +795,7 @@ function saveRegularScores() {
     alert(`[${student.name}] 的 ${year}學年度 ${semester} 平時成績儲存完畢！`);
 }
 
-// 【月考/期末考 排行中心邏輯區】
+// 核心排行與整合預警模組
 function refreshExamSelect() {
     const selExam = document.getElementById('selExam');
     const savedValue = selExam.value;
@@ -878,6 +875,10 @@ function renderEarlyWarning() {
     const exam = exams.find(e => e.id === examId);
     const student = students.find(s => s.id === studentId);
 
+    const tokens = exam.name.split('-');
+    const regKey = (tokens.length >= 2) ? `${tokens[0]}-${tokens[1]}` : "";
+    const regRecord = (student.regularScores && student.regularScores[regKey]) ? student.regularScores[regKey] : {};
+
     let semesterTotalAccumulated = 0;
     let anyExamRecorded = false;
     let failedSubjectsCount = 0;
@@ -887,40 +888,42 @@ function renderEarlyWarning() {
         if(accumData.count > 0) anyExamRecorded = true;
 
         semesterTotalAccumulated += accumData.val;
+        const regScore = regRecord[sub.name] !== undefined ? regRecord[sub.name] : null;
+        const regScoreDisplay = regScore !== null ? `${regScore} 分` : `<span style="color:#aaa;">未輸入</span>`;
 
         let statusTag = `<span class="warning-status-tag status-reexam">累計進度中</span>`;
-        let advice = `目前已考 ${accumData.count} 場，該科累計取得 ${accumData.val.toFixed(1)} 分。`;
+        let advice = `段考已考 ${accumData.count} 場，累計取得 ${accumData.val.toFixed(1)} 分。`;
 
         if (accumData.count === 3) {
             if (accumData.val >= 36) {
                 statusTag = `<span class="warning-status-tag status-pass">安全取得學分</span>`;
-                advice = `終期累計總分達 ${accumData.val.toFixed(1)} (>=36)，確定拿到學分！`;
+                advice = `終期累計總分達 ${accumData.val.toFixed(1)} (>=36)，過關！`;
             } else if (accumData.val >= 24) {
                 statusTag = `<span class="warning-status-tag status-reexam">需補考</span>`;
-                advice = `累計分數為 ${accumData.val.toFixed(1)} 分，落入 24~35.9 區間，必須參加補考。`;
+                advice = `累計分數為 ${accumData.val.toFixed(1)} 分，落入補考區間，必須參加補考。`;
                 failedSubjectsCount++;
             } else {
                 statusTag = `<span class="warning-status-tag status-fail">直接死當</span>`;
-                advice = `累計分數低於 24 分（相當於學期平均低於40），無法補考，直接重補修。`;
+                advice = `累計分數低於 24 分，不予補考，直接重補修。`;
                 failedSubjectsCount++;
             }
         } else {
             if(accumData.count === 2 && accumData.val < 16) {
                 statusTag = `<span class="warning-status-tag status-fail">進度落後</span>`;
-                advice = `前兩次累計僅 ${accumData.val.toFixed(1)} 分，期末考必須考到大於 ${(36 - accumData.val) / 0.2} 分才能及格！`;
+                advice = `前兩次累計僅 ${accumData.val.toFixed(1)} 分，期末考必須大於 ${(36 - accumData.val) / 0.2} 分才能過關！`;
             }
         }
 
-        return `<tr><td><strong>${sub.name}</strong></td><td><strong>${accumData.val.toFixed(1)} 分</strong> (已考 ${accumData.count}/3 場)</td><td>${statusTag}</td><td>${advice}</td></tr>`;
+        return `<tr><td><strong>${sub.name}</strong></td><td><strong>${accumData.val.toFixed(1)} 分</strong> (已考 ${accumData.count}/3 場)</td><td>${regScoreDisplay}</td><td>${statusTag}</td><td>${advice}</td></tr>`;
     }).join('');
 
     tbody.innerHTML = tableHtml;
 
     let summaryHtml = `學生姓名：<strong>${student.name}</strong> ｜ 目前學期三段累計狀態：`;
     if(!anyExamRecorded) {
-        summaryHtml += `<span style="color:#7f8c8d; font-weight:bold;">尚無任何考試進度。</span>`;
+        summaryHtml += `<span style="color:#7f8c8d; font-weight:bold;">尚無任何段考資料。</span>`;
     } else {
-        summaryHtml += `<br>1. 全科目學期總累計得分（均已x0.2）：<strong style="color:#2980b9; font-size:16px;">${semesterTotalAccumulated.toFixed(1)} 分</strong>`;
+        summaryHtml += `<br>1. 段考學期總累計得分（均已x0.2）：<strong style="color:#2980b9; font-size:16px;">${semesterTotalAccumulated.toFixed(1)} 分</strong>`;
         
         if(semesterTotalAccumulated < 36) {
             summaryHtml += ` <span style="color:var(--danger); font-weight:bold;">(⚠️ 目前進度低於 36 分及格危險紅線)</span>`;
@@ -928,7 +931,7 @@ function renderEarlyWarning() {
         if(failedSubjectsCount > 0) {
             summaryHtml += `<br>2. 警告：共有 <strong>${failedSubjectsCount}</strong> 個科目在期末結算後未能順利過關。`;
         } else {
-            summaryHtml += `<br>2. 狀態：隨時監控中。請利用下方列表觀察各別科目的推估進度。`;
+            summaryHtml += `<br>2. 狀態：隨時監控中。可切換「平時成績」分頁隨時校正或登錄平常表現。`;
         }
     }
 
