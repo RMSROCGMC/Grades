@@ -421,7 +421,7 @@
             <h3 style="margin:0;">總體動態排行榜 (<span id="currentExamNameTitle">未選擇考試</span>)</h3>
             <button class="btn-excel" onclick="exportToExcel()">匯出 Excel (.xlsx)</button>
         </div>
-        <div style="font-size: 12px; color: #e74c3c; margin-bottom: 5px;">* 註：原始總分欄位已更換為「學期階段累計進度 (各考科得分均已x0.2)」。若期末全部考完且累計未滿 36 分者將亮紅字警報。</div>
+        <div style="font-size: 12px; color: #e74c3c; margin-bottom: 5px;">* 註：學期累計分欄位為「學期階段累計進度 (各考科得分均已x0.2)」。若期末全部考完且累計未滿 36 分者將亮紅字警報。</div>
         <div class="table-responsive">
             <table id="scoreManagerTable">
                 <thead>
@@ -702,9 +702,8 @@ function handleStudentSelectChange() {
     renderEarlyWarning();
 }
 
-// 【核心改造】計算該學生的三次考試跨欄位累計分 (x0.2)
 function calculateSemesterAccumulated(student, currentExam, subjectName) {
-    const tokens = currentExam.name.split('-'); // e.g. ["114學年度", "下學期", "一年級", "第二次月考"]
+    const tokens = currentExam.name.split('-'); 
     if(tokens.length < 4) return { val: 0, count: 0 };
 
     const prefix = `${tokens[0]}-${tokens[1]}-${tokens[2]}-`;
@@ -727,7 +726,6 @@ function calculateSemesterAccumulated(student, currentExam, subjectName) {
     return { val: totalScoreForSub, count: examCount };
 }
 
-// 【全新提前預警診斷】依據 x0.2 進度隨時看
 function renderEarlyWarning() {
     const examId = document.getElementById('selExam').value;
     const studentId = document.getElementById('selStudent').value;
@@ -753,12 +751,9 @@ function renderEarlyWarning() {
 
         semesterTotalAccumulated += accumData.val;
 
-        // 單科滿分 100 乘以 0.2 佔 20 分。三次全部滿分為 60 分（及格線為 36 分）
-        // 在只有一或兩次考試時，做進度推估預警
         let statusTag = `<span class="warning-status-tag status-reexam">累計進度中</span>`;
         let advice = `目前已考 ${accumData.count} 場，該科累計取得 ${accumData.val.toFixed(1)} 分。`;
 
-        // 如果期末考也考完了，進入終極判定
         if (accumData.count === 3) {
             if (accumData.val >= 36) {
                 statusTag = `<span class="warning-status-tag status-pass">安全取得學分</span>`;
@@ -773,7 +768,6 @@ function renderEarlyWarning() {
                 failedSubjectsCount++;
             }
         } else {
-            // 提前推估：單科目前累計進度如果太低做提示
             if(accumData.count === 2 && accumData.val < 16) {
                 statusTag = `<span class="warning-status-tag status-fail">進度落後</span>`;
                 advice = `前兩次累計僅 ${accumData.val.toFixed(1)} 分，期末考必須考到大於 ${(36 - accumData.val) / 0.2} 分才能及格！`;
@@ -791,7 +785,6 @@ function renderEarlyWarning() {
     } else {
         summaryHtml += `<br>1. 全科目學期總累計得分（均已x0.2）：<strong style="color:#2980b9; font-size:16px;">${semesterTotalAccumulated.toFixed(1)} 分</strong>`;
         
-        // 若為期末考且總和未滿180折算進度 (180 * 0.2 = 36)
         if(semesterTotalAccumulated < 36) {
             summaryHtml += ` <span style="color:var(--danger); font-weight:bold;">(⚠️ 目前進度低於 36 分及格危險紅線)</span>`;
         }
@@ -887,7 +880,6 @@ function refreshScoreBoard() {
             }
         });
 
-        // 核心改造：計算跨考試之全考科 x0.2 的總累計進度
         let currentTotalAccumulated = 0;
         exam.subjects.forEach(sub => {
             const accumData = calculateSemesterAccumulated(s, exam, sub.name);
@@ -973,7 +965,6 @@ function refreshScoreBoard() {
             else progressText = "持平";
         }
 
-        // 修改輸出：原原始總分欄位更換為學期累計分。若低於36做視覺提示
         let accumDisplay = s._semesterAccumulatedTotal.toFixed(1);
         if(s._semesterAccumulatedTotal < 36) {
             accumDisplay = `<span class="alert-under-180">${s._semesterAccumulatedTotal.toFixed(1)} (未滿36)</span>`;
